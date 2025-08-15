@@ -10,7 +10,7 @@ class GetTextfromGoogleDocs(QObject):
     def __init__(self, work_with_text):
         super().__init__()
         SCOPES = ['https://www.googleapis.com/auth/documents']
-        SERVICE_ACCOUNT_FILE = '../../rozpiznavanya/secret_data/gogAPI.json' 
+        SERVICE_ACCOUNT_FILE = '../secret_data/gogAPI.json' 
         creds = service_account.Credentials.from_service_account_file(
             SERVICE_ACCOUNT_FILE, scopes=SCOPES)
         self.service = build('docs', 'v1', credentials=creds)

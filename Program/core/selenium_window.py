@@ -16,7 +16,7 @@ import pygetwindow as gw
 class WindowSelenium():
 
     def __init__(self, work_with_text):
-        load_dotenv("../../rozpiznavanya/secret_data/inf.env")
+        load_dotenv("../secret_data/inf.env")
         self.unique_title = "MySupereWindow_12345"
         options = uc.ChromeOptions()
 
