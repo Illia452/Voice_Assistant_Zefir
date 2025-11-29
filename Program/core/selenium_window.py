@@ -55,7 +55,7 @@ class WindowSelenium():
     
     def move_WindowOutsideDisplay(self):
         # Переміщаємо вікно за межі екрана 
-        self.win.move_window(x=-1919, y=0, width=1920, height=1080)
+        self.win.move_window(x=0, y=0, width=1920, height=1080)
 
         # Клікаємо по координатах
         # time.sleep(1)
@@ -135,7 +135,7 @@ class WindowSelenium():
 
 
     def click_Button_VoiceWrite(self):
-        voice_write = self.driver.find_element(By.ID, ":9j")
+        voice_write = self.driver.find_element(By.ID, ":94")
         voice_write.click()
         self.delay_lvl1()
 

@@ -139,7 +139,7 @@ class Work_withTexts_FromVosk(QObject):
         for silence in self.list_silence:
             if (silence[1] - silence[0]) >= 2800: # шукаємо тишу в 1800мс
                 print("ЗНАЙДЕНО ТИШУ")
-                self.find_silence = True # знайдено тишу
+                self.find_silence = True 
                 self.list_audio = []
                 united_audio = None
                 break
