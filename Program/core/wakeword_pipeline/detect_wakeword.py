@@ -1,5 +1,6 @@
 from actions_after_wakeword import SpeechWaiter
 import time
+import asyncio
 
 class WakeWordChecker():
     def __init__(self):
@@ -17,22 +18,39 @@ class WakeWordChecker():
 
         self.speech_waiter = SpeechWaiter()
         self.is_wakeword = False
+        self.time_wakeword = 0
 
 
-
-    def check_wakeword_status(self, text):
+    async def check_wakeword_status(self, text):
         if self.is_wakeword:
-            # cancel timer
-            self.is_wakeword = False
+
+            cooldown = time.time() - self.time_wakeword
+
+            if cooldown < 1:
+                return
+            else:
+                self.timer.cancel()
+                # listen command
+                # search silence 
+
         else:
-            self.search_wakeword(text)
-    def search_wakeword(self, text):
+            await self.search_wakeword(text)
+
+
+    async def search_wakeword(self, text):
         for wakeword in self.en_list_wakewords:
             if wakeword in text:
                 print("Є КЛючове слово")
+
+                self.time_wakeword = time.time()
                 self.is_wakeword = True
                 #launch pushwindow
-                #launch stt
-                self.speech_waiter.
+                #launch gstt
+                await self.start_timer()
+                break
 
                 
+    async def start_timer(self):
+        self.timer = asyncio.create_task(
+            self.speech_waiter.check_wait_time(self)
+            )

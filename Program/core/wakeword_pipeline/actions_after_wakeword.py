@@ -4,9 +4,14 @@ import time
 class SpeechWaiter():
     def __init__(self):
         pass
-    def check_wait_time(self, time_wakeword):
-        if time.time() - time_wakeword > 5:
-            print("ЧАС МИНУВ")
-        else:
-        
-            
+    
+    async def check_wait_time(self, wakeword_cheker):
+
+        try:
+            await asyncio.sleep(6)
+            print("ЧАС ОЧІКУВАННЯ МОВЛЕННЯ МИНУВ")
+            wakeword_cheker.is_wakeword = False
+
+        except asyncio.CancelledError:
+            print("ТАйМЕР СКАСОВАНО БО Є МОВЛЕННЯ")
+            wakeword_cheker.is_wakeword = False

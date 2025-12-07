@@ -5,6 +5,7 @@ import noisereduce as nr
 from pydub import AudioSegment
 import json
 from detect_wakeword import WakeWordChecker
+import asyncio
 
 class Recognition_Speech():
     def __init__(self):
@@ -19,14 +20,14 @@ class Recognition_Speech():
         self.stream.start_stream()
 
 
-    def delete_noise(self):
-        data = self.stream.read(4096) 
+    async def delete_noise(self):
+        data = await asyncio.to_thread(self.stream.read, 4096)
         masiv = np.frombuffer(data, dtype=np.int16) # Перетворення байтових даних в масив
         audio_without_noise = nr.reduce_noise(y=masiv, sr=16000) # Зняття шуму з аудіопотоку
         self.bytes_audio = audio_without_noise.astype(np.int16).tobytes() # Конвертація масиву в байти
 
 
-    def volume_up(self):
+    async def volume_up(self):
         audio_segment = AudioSegment(
         data=self.bytes_audio,
         sample_width=2,    # 16 бітний формат (= 2 байти)
@@ -38,36 +39,36 @@ class Recognition_Speech():
         self.final_audio = audio_np.tobytes() # перетворення у байти
         
 
-    def delete_none_results(self, res_key):
+    async def delete_none_results(self, res_key):
         if len(self.result[res_key]) == 0:
             return
         else:
             self.text = (self.result[res_key])
-            self.wakeword_checker.check_wakeword_status(self.text)
             print(self.text)
+            await self.wakeword_checker.check_wakeword_status(self.text)
             self.text = None
 
 
-    def speech_to_text(self):
+    async def speech_to_text(self):
         if self.recognizer.AcceptWaveform(self.final_audio): 
             rec = self.recognizer.Result()
             self.result = json.loads(rec)
-            self.delete_none_results("text")
+            await self.delete_none_results("text")
                                 
         else:
             # постійне прослуховування аудіо з реальним виведенням
             rec = self.recognizer.PartialResult()
             self.result = json.loads(rec)
-            self.delete_none_results("partial")
+            await self.delete_none_results("partial")
 
 
-    def print_text(self):
+    async def print_text(self):
         while True:
-            self.delete_noise()
-            self.volume_up()
-            self.speech_to_text()
+            await self.delete_noise()
+            await self.volume_up()
+            await self.speech_to_text()
             
 
 if __name__ == "__main__":
     speech_recognition = Recognition_Speech()
-    speech_recognition.print_text()
+    asyncio.run(speech_recognition.print_text())

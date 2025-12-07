@@ -15,7 +15,7 @@ import pygetwindow as gw
 
 class WindowSelenium():
 
-    def __init__(self, work_with_text):
+    def __init__(self):
         load_dotenv("../secret_data/inf.env")
         self.unique_title = "MySupereWindow_12345"
         options = uc.ChromeOptions()
@@ -25,7 +25,7 @@ class WindowSelenium():
         options.add_argument("--use-fake-device-for-media-stream")
 
         self.driver = uc.Chrome(options=options)
-        self.work_with_text = work_with_text
+
 
         self.selenium_running = True
 
@@ -87,7 +87,7 @@ class WindowSelenium():
         self.delay_lvl1()
 
     def click_signin(self):
-        singin1 = self.driver.find_element(By.XPATH, '/html/body/header/div[1]/div[5]/ul/li[2]/a')
+        singin1 = self.driver.find_element(By.LINK_TEXT, "Зв’язані додатки й сервіси")
         singin1.click()
         self.delay_lvl1()
 
