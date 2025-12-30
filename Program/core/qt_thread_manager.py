@@ -1,7 +1,8 @@
 from pyqt5_ui.main_window import UI_MainWindow
 from pyqt5_ui.push_window import PushWindow
 from wakeword_pipeline.vosk_stt_en import Speech_Recognition
-from google_stt import LogicGSTT
+from gstt_processes.logic_gstt import LogicGSTT
+from gstt_processes.google_stt import GSTT
 import sys
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QThread
@@ -19,18 +20,24 @@ class Wakeword_Pipeline_Worker(QObject):
         asyncio.run(self.speech_recognition.print_text())
         self.finished.emit()
 
+
+
 class Google_STT_Worker(QObject):
     finished = pyqtSignal()
-    def __init__(self):
+    def __init__(self, logic_gstt):
         super().__init__()
+        self.logic_gstt = logic_gstt
 
     def run(self):
-        self.logic_gstt = LogicGSTT()
+        self.google_stt = GSTT(self.logic_gstt)
+        self.google_stt.run()
 
 
 class Thread_Manager():
     def __init__(self):
         self.threads = {}
+
+        self.logic_gstt = LogicGSTT()
 
     def start_threads(self, name, worker, run_method):
         thread = QThread()
@@ -47,21 +54,8 @@ class Thread_Manager():
         self.start_threads("wakeword", worker, worker.run)
 
     def create_googlestt(self):
-        worker = Google_STT_Worker()
+        worker = Google_STT_Worker(self.logic_gstt)
         self.start_threads("google_stt", worker, worker.run)
-
-
-# class Thread_Managerr_test():
-    
-#     def create_wakeword_pipeline(self):
-#         self.thread = QThread()
-#         self.worker = Wakeword_Pipeline_Worker()
-#         self.worker.moveToThread(self.thread)
-#         self.thread.started.connect(self.worker.run)
-#         self.worker.finished.connect(self.thread.quit)
-#         self.worker.finished.connect(self.thread.deleteLater)
-#         self.thread.finished.connect(self.thread.deleteLater)
-#         self.thread.start()
 
 
 

@@ -135,7 +135,15 @@ def listen_print_loop(responses: object, self) -> str:
         The transcribed text.
     """
     num_chars_printed = 0
+    transcript = ''
+
+
     for response in responses:
+        if self.active_is == False:
+            print("ЗУПИНОЧКА")
+            comm.text_command.emit(transcript)
+            transcript = ''
+            break
         if not response.results:
             continue
 
@@ -161,15 +169,9 @@ def listen_print_loop(responses: object, self) -> str:
             sys.stdout.flush()
 
             num_chars_printed = len(transcript)
+
             comm.text_from_gstt.emit(transcript)
 
-            QApplication.processEvents()
-
-            if self.stopping:
-                print("ЗУПИНОЧКА")
-                self.stopping = False
-                comm.text_command.emit(transcript)
-                break
         else:
             print(transcript + overwrite_chars)
 
@@ -205,6 +207,8 @@ def main(self):
     )
 
     with MicrophoneStream(RATE, CHUNK) as stream:
+        self.stream_audio = stream
+
         audio_generator = stream.generator()
         requests = (
             speech.StreamingRecognizeRequest(audio_content=content)
@@ -217,21 +221,19 @@ def main(self):
         listen_print_loop(responses, self)
 
 
+class GSTT(QObject):
 
-class LogicGSTT(QObject):
-    def __init__(self):
+    def __init__(self, logic_gstt):
         super().__init__()
-        comm.start_gstt.connect(self.activate_and_run)
-        comm.stop_gstt.connect(self.stop_process)
-        self.stopping = False
-        
-    def activate_and_run(self):
-        print(">>>> ЗАПУСК GSTT")
-        main(self)
+        self.logic_gstt = logic_gstt
 
-    def stop_process(self):
-        self.stopping = True
-
+    def run(self):
+        while True:
+            if self.logic_gstt.active_is:
+                main(self.logic_gstt)
+                
+            else:
+                time.sleep(0.3)
 
 if __name__ == "__main__":
     main()
