@@ -4,15 +4,17 @@ import numpy as np
 import noisereduce as nr
 from pydub import AudioSegment
 import json
-from detect_wakeword import WakeWordChecker
+from wakeword_pipeline.wakeword_logic import WakeWordChecker, SilenceSearcher
 import asyncio
+from PyQt5.QtCore import QObject
 
-class Recognition_Speech():
+class Speech_Recognition(QObject):
     def __init__(self):
-        model = Model(r'..\..\..\models\speech_to_text\vosk-model-small-en-us-0.15')
+        model = Model(r'..\..\models\speech_to_text\vosk-model-small-en-us-0.15')
         self.recognizer = KaldiRecognizer(model, 16000)
 
         self.wakeword_checker = WakeWordChecker()
+        self.silence_searcher = SilenceSearcher()
         
         cap = pyaudio.PyAudio()
 
@@ -37,6 +39,7 @@ class Recognition_Speech():
         self.str_audio = audio_segment + 6 
         audio_np = np.array(self.str_audio.get_array_of_samples(), dtype=np.int16) # перетворення у numpy масив
         self.final_audio = audio_np.tobytes() # перетворення у байти
+        await self.silence_searcher.search_silence(self.str_audio)
         
 
     async def delete_none_results(self, res_key):
@@ -70,5 +73,5 @@ class Recognition_Speech():
             
 
 if __name__ == "__main__":
-    speech_recognition = Recognition_Speech()
+    speech_recognition = Speech_Recognition()
     asyncio.run(speech_recognition.print_text())

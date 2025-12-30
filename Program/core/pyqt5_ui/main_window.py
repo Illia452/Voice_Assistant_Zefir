@@ -9,24 +9,10 @@ import sys
 
 class UI_MainWindow(QMainWindow):
 
-    def __init__(self, vosk_worker, selenium_worker, get_text_worker):
+    def __init__(self):
         super().__init__()
         self.setupUI()
 
-        self.vosk_worker = vosk_worker
-        self.selenium_worker = selenium_worker
-        self.get_text_worker = get_text_worker
-
-    def closeEvent(self, event):
-        print("ЗАКРИТТЯ ВІКНА та всіх потоків")
-
-        self.vosk_worker.stopping_process()
-
-        self.selenium_worker.stopping_process()
-
-        self.get_text_worker.stopping_process()
-
-        event.accept()
 
     def setupUI(self):
         self.createMainWindow()

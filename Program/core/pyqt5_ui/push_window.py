@@ -1,20 +1,19 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QGraphicsDropShadowEffect,  QMainWindow, QLabel
-from PyQt5.QtCore import Qt, QPropertyAnimation, QPoint
+from PyQt5.QtCore import Qt, QPropertyAnimation, QPoint, pyqtSlot
 from PyQt5.QtGui import QColor, QFontDatabase, QFont
 from PyQt5 import QtCore, QtGui, QtWidgets
+from communications import comm
 
 
 class PushWindow(QWidget):
-    def __init__(self, vosk_worker): 
+    def __init__(self): 
         super().__init__()
 
-        self.vosk_worker = vosk_worker
-
-
-
         self.setupPushWindow()
-       
+        comm.start_push_window.connect(self.show_window)
+        comm.stop_push_window.connect(self.close_window)
+        comm.text_from_gstt.connect(self.print_text)
 
     def setupPushWindow(self):
         # Встановлюємо прапорці вікна:
@@ -37,6 +36,10 @@ class PushWindow(QWidget):
         self.createButton_Microphone()
         self.createButton_Send()
         self.createInputField()
+
+    @pyqtSlot()
+    def show_window(self):
+        self.animate_show_push()
 
 
     def setupUI(self):
@@ -82,6 +85,7 @@ class PushWindow(QWidget):
     def clickButton_close(self):
         self.animate_hide_push()
         QtCore.QTimer.singleShot(200, self.close_window)
+        self.print_text("")
     def close_window(self):
         self.close()
 
