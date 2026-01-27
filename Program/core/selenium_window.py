@@ -15,8 +15,8 @@ import pygetwindow as gw
 
 class WindowSelenium():
 
-    def __init__(self, work_with_text):
-        load_dotenv("../../rozpiznavanya/secret_data/inf.env")
+    def __init__(self):
+        load_dotenv("../secret_data/inf.env")
         self.unique_title = "MySupereWindow_12345"
         options = uc.ChromeOptions()
 
@@ -25,7 +25,7 @@ class WindowSelenium():
         options.add_argument("--use-fake-device-for-media-stream")
 
         self.driver = uc.Chrome(options=options)
-        self.work_with_text = work_with_text
+
 
         self.selenium_running = True
 
@@ -55,7 +55,7 @@ class WindowSelenium():
     
     def move_WindowOutsideDisplay(self):
         # Переміщаємо вікно за межі екрана 
-        self.win.move_window(x=-1919, y=0, width=1920, height=1080)
+        self.win.move_window(x=0, y=0, width=1920, height=1080)
 
         # Клікаємо по координатах
         # time.sleep(1)
@@ -87,7 +87,7 @@ class WindowSelenium():
         self.delay_lvl1()
 
     def click_signin(self):
-        singin1 = self.driver.find_element(By.XPATH, '/html/body/header/div[1]/div[5]/ul/li[2]/a')
+        singin1 = self.driver.find_element(By.LINK_TEXT, "Зв’язані додатки й сервіси")
         singin1.click()
         self.delay_lvl1()
 
@@ -135,7 +135,7 @@ class WindowSelenium():
 
 
     def click_Button_VoiceWrite(self):
-        voice_write = self.driver.find_element(By.ID, ":9j")
+        voice_write = self.driver.find_element(By.ID, ":94")
         voice_write.click()
         self.delay_lvl1()
 

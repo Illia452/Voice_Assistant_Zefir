@@ -1,2 +1,3 @@
 /models/
-/rozpiznavanya/secret_data/
+/Program/secret_data/
+**/__pycache__/
