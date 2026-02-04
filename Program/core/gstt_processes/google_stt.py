@@ -141,7 +141,7 @@ def listen_print_loop(responses: object, self) -> str:
     for response in responses:
         if self.active_is == False:
             print("ЗУПИНОЧКА")
-            comm.text_command.emit(transcript)
+            comm.final_command.emit(transcript)
             transcript = ''
             break
         if not response.results:
@@ -170,7 +170,7 @@ def listen_print_loop(responses: object, self) -> str:
 
             num_chars_printed = len(transcript)
 
-            comm.text_from_gstt.emit(transcript)
+            comm.stream_text_gstt.emit(transcript)
 
         else:
             print(transcript + overwrite_chars)

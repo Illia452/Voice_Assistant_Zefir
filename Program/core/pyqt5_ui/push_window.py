@@ -13,7 +13,8 @@ class PushWindow(QWidget):
         self.setupPushWindow()
         comm.start_push_window.connect(self.show_window)
         comm.stop_push_window.connect(self.close_window)
-        comm.text_from_gstt.connect(self.print_text)
+        comm.stream_text_gstt.connect(self.print_text)
+        self.command = ""
 
     def setupPushWindow(self):
         # Встановлюємо прапорці вікна:
@@ -85,8 +86,11 @@ class PushWindow(QWidget):
     def clickButton_close(self):
         self.animate_hide_push()
         QtCore.QTimer.singleShot(200, self.close_window)
-        self.print_text("")
+
+
     def close_window(self):
+        print("тУТ 1")
+        self.inputField.setText('')
         self.close()
 
 
@@ -214,9 +218,8 @@ class PushWindow(QWidget):
 
     @QtCore.pyqtSlot(str)
     def print_text(self, text):
-
-        speech = text
-        self.inputField.setText(speech)
+        self.command = text
+        self.inputField.setText(self.command)
 
 
 

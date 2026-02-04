@@ -1,0 +1,869 @@
+from PyQt5.QtWidgets import QMainWindow, QLabel
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import Qt, QThread, QObject, pyqtSignal, pyqtSlot
+from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtGui import QPixmap
+import sys
+from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, pyqtProperty, QPoint, QSize
+from PyQt5.QtWidgets import QGraphicsOpacityEffect, QCheckBox
+from PyQt5.QtGui import QColor, QFont, QPixmap, QPainter, QIcon
+
+
+
+
+class GlassToggle(QCheckBox):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        # Трохи зменшені розміри: ширина 40, висота 22
+        self.setFixedSize(40, 22)
+        self.setCursor(Qt.PointingHandCursor)
+        
+        # Початкова позиція кульки (тепер відступ 2 пікселі)
+        self._circle_position = 2
+        
+        self.animation = QPropertyAnimation(self, b"circle_position")
+        self.animation.setDuration(350) # Лишаємо плавність
+        self.animation.setEasingCurve(QEasingCurve.InOutQuint)
+
+    @pyqtProperty(float)
+    def circle_position(self):
+        return self._circle_position
+
+    @circle_position.setter
+    def circle_position(self, pos):
+        self._circle_position = pos
+        self.update()
+
+    def paintEvent(self, e):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        
+        is_checked = self.isChecked()
+        # Кольори: насичений фіолетовий для "ON", легке скло для "OFF"
+        bg_color = QColor(147, 51, 234, 230) if is_checked else QColor(255, 255, 255, 80)
+        
+        p.setBrush(bg_color)
+        p.setPen(Qt.NoPen)
+        # Малюємо фон (капсулу)
+        p.drawRoundedRect(0, 0, self.width(), self.height(), 11, 11)
+        
+        # Малюємо кульку (зменшили до 18x18, щоб вона була акуратною)
+        p.setBrush(QColor("white"))
+        p.drawEllipse(int(self._circle_position), 2, 18, 18)
+    
+    def hitButton(self, pos: QPoint):
+        # Повертаємо True, якщо клік потрапив у будь-яку точку віджета
+        return self.rect().contains(pos)
+
+    def nextCheckState(self):
+        super().nextCheckState()
+        # Нові межі для анімації кульки:
+        # 2 — початкова позиція (зліва)
+        # 20 — кінцева позиція (40 ширина - 18 кулька - 2 відступ)
+        start = self._circle_position
+        end = 20 if self.isChecked() else 2
+        
+        self.animation.stop()
+        self.animation.setStartValue(start)
+        self.animation.setEndValue(end)
+        self.animation.start()
+
+class UI_MainWindow(QMainWindow):
+
+    def __init__(self):
+        super().__init__()
+        self.setupUI()
+
+
+    def setupUI(self):
+        self.createMainWindow()
+        self.createTitleStatus()
+        self.createInputField_ForCommands()
+        self.createButtonSend()
+        self.createButtonStartStop()
+        self.createIconZefir()
+        self.createButtonUseMicrophone()
+        self.createSettingPanel()
+        self.createHistoryPanel()
+        self.full_setting_content()
+
+
+
+    def createMainWindow(self):
+        self.setObjectName("MainWindow")
+        self.setFixedSize(960,600)
+        self.setStyleSheet("background: qlineargradient(spread:pad, x1:0, y1:1, x2:0, y2:0, \n"
+                                      "                                stop:0 #F3E8FF, stop:1 #D8B4FE);")
+        self.centralwidget = QtWidgets.QWidget(self)
+        self.centralwidget.setObjectName("centralwidget")
+        self.setCentralWidget(self.centralwidget)
+        self.setFocusPolicy(Qt.ClickFocus)
+
+    def close_set(self):
+            self.main_container.hide()
+
+    def full_setting_content(self):
+        # Головний контейнер (вже створений тобою)
+        self.main_container = QtWidgets.QWidget(self.centralwidget)
+        self.main_container.setGeometry(0, 0, 960, 600)
+        self.main_container.setStyleSheet("background: #EDE9FE;") # Світла лаванда
+        self.main_container.hide() # За замовчуванням приховано
+
+        # --- ОСНОВНИЙ ЛЕЙАУТ ВІКНА ---
+        self.layout_full = QtWidgets.QVBoxLayout(self.main_container)
+        self.layout_full.setContentsMargins(0, 0, 0, 0)
+        self.layout_full.setSpacing(0)
+
+        # 1. ШАПКА (HEADER)
+        self.header_frame = QtWidgets.QFrame(self.main_container)
+        self.header_frame.setFixedHeight(80)
+        self.header_frame.setStyleSheet("background: transparent;")
+        
+        header_layout = QtWidgets.QHBoxLayout(self.header_frame)
+        header_layout.setContentsMargins(30, 0, 30, 0)
+
+        # Кнопка Назад
+        self.btn_back_full = QtWidgets.QPushButton("  Назад")
+        self.btn_back_full.setCursor(Qt.PointingHandCursor)
+        self.btn_back_full.setMinimumSize(100, 40)
+        self.btn_back_full.clicked.connect(self.close_set)
+        # Примітка: використовуй свою іконку стрілки вліво
+        self.btn_back_full.setIcon(QtGui.QIcon("../image/icon/arrow_left.svg")) 
+        self.btn_back_full.setStyleSheet("""
+            QPushButton {
+                background-color: white;
+                border-radius: 12px;
+                color: #581c87;
+                font-size: 15px;
+                font-weight: bold;
+                border: 1px solid rgba(139, 92, 246, 0.2);
+            }
+            QPushButton:hover {
+                background-color: #F5F3FF;
+                border: 1px solid #8b5cf6;
+            }
+        """)
+
+
+
+        # Заголовок по центру
+        self.label_title_full = QtWidgets.QLabel("Налаштування")
+        self.label_title_full.setStyleSheet("""
+            font-size: 26px;
+            font-weight: bold;
+            color: #581c87;
+            font-family: 'Roboto';
+        """)
+
+        header_layout.addWidget(self.btn_back_full)
+        header_layout.addStretch()
+        header_layout.addWidget(self.label_title_full)
+        header_layout.addStretch()
+        # Додаємо порожній елемент для ідеальної центровки заголовка
+        header_layout.addSpacing(100) 
+
+        self.layout_full.addWidget(self.header_frame)
+
+        # --- НИЖНЯ ЧАСТИНА (БОКОВА ПАНЕЛЬ + КОНТЕНТ) ---
+        self.body_container = QtWidgets.QWidget(self.main_container)
+        body_layout = QtWidgets.QHBoxLayout(self.body_container)
+        body_layout.setContentsMargins(20, 0, 25, 25)
+        body_layout.setSpacing(20)
+
+        # 2. БОКОВА ПАНЕЛЬ (SIDEBAR)
+        self.sidebar = QtWidgets.QFrame(self.body_container)
+        self.sidebar.setFixedWidth(220)
+        self.sidebar.setStyleSheet("""
+            QFrame {
+                background-color: rgba(255, 255, 255, 0.5);
+                border-radius: 20px;
+                border: 1px solid rgba(255, 255, 255, 0.6);
+            }
+        """)
+        
+        sidebar_inner_layout = QtWidgets.QVBoxLayout(self.sidebar)
+        sidebar_inner_layout.setContentsMargins(10, 20, 10, 20)
+        sidebar_inner_layout.setSpacing(10)
+
+        # Стиль кнопок меню
+        menu_button_style = """
+            QPushButton {
+                text-align: left;
+                padding-left: 15px;
+                height: 45px;
+                border: none;
+                border-radius: 12px;
+                color: #6B7280;
+                font-size: 14px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 255, 255, 0.4);
+                color: #581c87;
+            }
+            QPushButton:checked {
+                background-color: white;
+                color: #a855f7;
+                font-weight: bold;
+            }
+        """
+
+        self.btn_menu_general = QtWidgets.QPushButton("⚡ Загальні")
+        self.btn_menu_voice = QtWidgets.QPushButton("🎙️ Голос")
+        self.btn_menu_interface = QtWidgets.QPushButton("🎨 Інтерфейс")
+        self.btn_menu_about = QtWidgets.QPushButton("ℹ️ Про систему")
+
+        for btn in [self.btn_menu_general, self.btn_menu_voice, self.btn_menu_interface, self.btn_menu_about]:
+            btn.setCheckable(True)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setStyleSheet(menu_button_style)
+            sidebar_inner_layout.addWidget(btn)
+
+        self.btn_menu_general.setChecked(True) # Активна перша за замовчуванням
+        sidebar_inner_layout.addStretch() # Притискає кнопки до верху
+
+        # 3. ОБЛАСТЬ КОНТЕНТУ (STACKED WIDGET)
+        self.content_stack = QtWidgets.QStackedWidget(self.body_container)
+        self.content_stack.setStyleSheet("""
+            QStackedWidget {
+                background-color: rgba(255, 255, 255, 0.3);
+                border-radius: 20px;
+                border: 1px solid rgba(255, 255, 255, 0.4);
+            }
+        """)
+
+        # --- ПРИКЛАД СТОРІНКИ (General Page) ---
+        self.page_general = QtWidgets.QWidget()
+        page_gen_layout = QtWidgets.QVBoxLayout(self.page_general)
+        page_gen_layout.setContentsMargins(30, 30, 30, 30)
+        page_gen_layout.setSpacing(20)
+
+        # Картка налаштування 1
+        self.card_1 = QtWidgets.QFrame()
+        self.card_1.setMinimumHeight(100)
+        self.card_1.setStyleSheet("""
+            QFrame {
+                background-color: rgba(255, 255, 255, 0.6);
+                border-radius: 15px;
+                border: 1px solid white;
+            }
+        """)
+        
+        card_1_layout = QtWidgets.QHBoxLayout(self.card_1)
+        card_1_layout.setContentsMargins(20, 0, 20, 0)
+        
+        info_layout = QtWidgets.QVBoxLayout()
+        info_layout.setAlignment(Qt.AlignCenter)
+        lbl_main = QtWidgets.QLabel("Запускати разом з Windows")
+        lbl_main.setStyleSheet("font-size: 16px; font-weight: bold; color: #4B5563; border:none;")
+        lbl_desc = QtWidgets.QLabel("Асистент буде стартувати автоматично")
+        lbl_desc.setStyleSheet("font-size: 12px; color: #9CA3AF; border:none;")
+        info_layout.addWidget(lbl_main)
+        info_layout.addWidget(lbl_desc)
+        
+        card_1_layout.addLayout(info_layout)
+        card_1_layout.addStretch()
+        
+        # Додаємо твій тумблер GlassToggle
+        self.toggle_win = GlassToggle(self.card_1)
+        card_1_layout.addWidget(self.toggle_win)
+
+        page_gen_layout.addWidget(self.card_1)
+        page_gen_layout.addStretch() # Тримає картки зверху
+
+        self.content_stack.addWidget(self.page_general)
+
+        # Збираємо все докупи
+        body_layout.addWidget(self.sidebar)
+        body_layout.addWidget(self.content_stack)
+        
+        self.layout_full.addWidget(self.body_container)
+
+
+
+    def createTitleStatus(self):
+        self.textStatus = QtWidgets.QLabel(self.centralwidget)
+        self.textStatus.setGeometry(QtCore.QRect(300, 30, 351, 41))
+        self.textStatus.setAlignment(Qt.AlignCenter)
+        self.textStatus.setStyleSheet("font: 20pt \"Roboto\";\n"
+                                    "color: rgb(88, 28, 135);\n"
+                                    "background-color: transparent;")
+        self.textStatus.setObjectName("label")
+
+
+    def createInputField_ForCommands(self):
+        self.InputField = QtWidgets.QLineEdit(self.centralwidget)
+        self.InputField.setGeometry(QtCore.QRect(230, 450, 500, 48))
+        self.InputField.setPlaceholderText("Введіть команду вручну...")
+        self.InputField.setFocusPolicy(Qt.ClickFocus)
+        self.InputField.setFont(QFont("Roboto", 14))  # Шрифт
+        
+        self.InputField.setStyleSheet("""
+            QLineEdit {
+                background-color: rgb(243, 244, 246);
+                border-radius: 10px;
+                padding: 5px 45px 5px 10px;
+                font-size: 16px;
+                border: 1px solid #e5e7eb;                         
+            }
+            QLineEdit:focus {
+                border: 2px solid #a855f7;  /* Бордер з'являється при фокусі */
+                background-color: #faf5ff;  /* Легка зміна кольору */
+            }
+        """)
+        
+        
+        self.InputField.setText("")
+        self.InputField.setObjectName("lineEdit")
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(15)  # Розмиття
+        shadow.setOffset(0, 4)  # Зміщення тіні (по X та Y)
+        shadow.setColor(QColor(0, 0, 0, 30))  # Колір тіні (чорний з прозорістю)
+        self.InputField.setGraphicsEffect(shadow)
+
+    def createButtonSend(self):
+        self.button_send = QtWidgets.QPushButton(self.centralwidget)
+        self.button_send.setGeometry(QtCore.QRect(690, 460, 30, 30))
+        self.button_send.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
+        self.button_send.setStyleSheet("""
+			QPushButton {
+				background-color: rgb(243, 244, 246);
+                border-radius: 5px;
+        	}
+            QPushButton:hover {
+                background-color: #c0c1c3;  
+                                
+            }                    
+		""")
+        self.button_send.setText("")
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap("../image/icon/send_regular_icon.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.button_send.setIcon(icon)
+        self.button_send.setObjectName("button_send")
+        self.saved_text = ""
+
+
+    def createButtonStartStop(self):
+        self.button_startStop = QtWidgets.QPushButton(self.centralwidget)
+        self.button_startStop.setGeometry(QtCore.QRect(390, 310, 64, 64))
+        self.button_startStop.setStyleSheet("""
+			QPushButton {
+				background-color: #c084fc;
+				border-radius: 5px;
+				border: 1px solid #e1e6ef;
+			}
+			QPushButton:hover {
+                background-color: #a855f7;
+									
+			}
+	    """)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(15)  # Розмиття
+        shadow.setOffset(0, 4)  # Зміщення тіні (по X та Y)
+        shadow.setColor(QColor(0, 0, 0, 30))  # Колір тіні (чорний з прозорістю)
+        self.button_startStop.setGraphicsEffect(shadow)
+        
+        self.button_startStop.setText("")
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap("../image/icon/play_regular_icon.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.button_startStop.setIcon(icon)
+        self.button_startStop.setIconSize(QtCore.QSize(20, 20))
+        self.button_startStop.setObjectName("button_startStop")
+        self.button_startStop.clicked.connect(self.clickButton_StartStop)
+        self.status_buttonStartStop = False
+        self.clickButton_StartStop()
+
+
+    def clickButton_StartStop(self):
+        if self.status_buttonStartStop:
+            self.switchON_ButtonStartStop()
+            self.status_buttonStartStop = False
+
+        else:
+            self.switchOFF_ButtonStartStop()
+            self.status_buttonStartStop = True
+
+    def switchON_ButtonStartStop(self):
+        self.textStatus.setText("Активний")
+        self.button_startStop.setStyleSheet("""
+        QPushButton {
+            background-color: rgba(140, 210, 205, 0.65);
+            border-radius: 5px;
+            border: 1px solid #e1e6ef;
+        }
+        QPushButton:hover {
+            background-color: rgba(124, 196, 192, 0.65);
+        }
+        """)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap("../image/icon/pause_regular_icon.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.button_startStop.setIcon(icon)
+        self.button_startStop.setIconSize(QtCore.QSize(20, 20))
+
+    def switchOFF_ButtonStartStop(self):
+        self.textStatus.setText("Не активний")
+        self.button_startStop.setStyleSheet("""
+        QPushButton {
+            background-color: #c084fc;
+            border-radius: 5px;
+            border: 1px solid #e1e6ef;
+        }
+        QPushButton:hover {
+            background-color: #a855f7;
+                                
+        }
+        """)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap("../image/icon/play_regular_icon.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off) 
+        self.button_startStop.setIcon(icon)
+        self.button_startStop.setIconSize(QtCore.QSize(20, 20))
+
+
+    def createIconZefir(self):
+        self.image_iconZefir = QLabel(self.centralwidget)  # Створюємо новий QLabel
+        self.image_iconZefir.setGeometry(370, 80, 200, 200)  # Встановлюємо розмір та позицію
+        pixmap = QPixmap('../image/icon/zefir.png')  # Завантажуємо зображення
+        self.image_iconZefir.setPixmap(pixmap)  # Встановлюємо зображення в QLabel
+        self.image_iconZefir.setAlignment(Qt.AlignCenter)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(40)  # Розмиття
+        shadow.setOffset(0, 4)  # Зміщення тіні (по X та Y)
+        shadow.setColor(QColor(0, 0, 0, 100))  # Колір тіні (чорний з прозорістю)
+        self.image_iconZefir.setGraphicsEffect(shadow)
+
+        self.image_iconZefir.setScaledContents(True)
+        self.image_iconZefir.setStyleSheet("""
+			QLabel {
+				background-color: transparent;
+			}
+        """)
+
+
+    def createButtonUseMicrophone(self):
+        self.button_microphone = QtWidgets.QPushButton(self.centralwidget)
+        self.button_microphone.setGeometry(QtCore.QRect(490, 310, 64, 64))
+        self.button_microphone.setStyleSheet("""
+			QPushButton {
+				background-color: #c084fc;
+				border-radius: 5px;
+				border: 1px solid #e1e6ef;
+			}
+			QPushButton:hover {
+                background-color: #a855f7;
+									
+			}
+        """)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(15)  # Розмиття
+        shadow.setOffset(0, 4)  # Зміщення тіні (по X та Y)
+        shadow.setColor(QColor(0, 0, 0, 30))  # Колір тіні (чорний з прозорістю)
+        self.button_microphone.setGraphicsEffect(shadow)
+        self.button_microphone.setText("")
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap("../image/icon/mic_on_regular_icon.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.button_microphone.setIcon(icon)
+        self.button_microphone.setIconSize(QtCore.QSize(22, 22))
+        self.button_microphone.setObjectName("button_microphone")
+        self.button_microphone.clicked.connect(self.clickButton_Microphone)
+        self.status_buttonMicrophone = False
+        self.clickButton_Microphone()
+
+    def clickButton_Microphone(self):
+        if self.status_buttonMicrophone:
+            self.switchON_ButtonMicrophone()
+            self.status_buttonMicrophone = False
+
+        else:
+            self.switchOFF_ButtonMicrophone()
+            self.status_buttonMicrophone = True
+
+
+    def switchON_ButtonMicrophone(self):
+            self.button_microphone.setStyleSheet("""
+			QPushButton {
+				background-color: #c084fc;
+				border-radius: 5px;
+				border: 1px solid #e1e6ef;
+			}
+			QPushButton:hover {
+                background-color: #a855f7;
+									
+			}
+	        """)
+            icon = QtGui.QIcon()
+            icon.addPixmap(QtGui.QPixmap("../image/icon/mic_on_regular_icon.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+            self.button_microphone.setIcon(icon)
+            self.button_microphone.setIconSize(QtCore.QSize(22, 22))
+
+
+    def switchOFF_ButtonMicrophone(self):
+        self.button_microphone.setStyleSheet("""
+        QPushButton {
+            background-color: rgba(230, 160, 160, 0.9);
+            border-radius: 5px;
+            border: 1px solid #e1e6ef;
+        }
+        QPushButton:hover {
+            background-color: rgba(223, 146, 146, 0.9);
+        }
+        """)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap("../image/icon/mic_off_regular_icon.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.button_microphone.setIcon(icon)
+        self.button_microphone.setIconSize(QtCore.QSize(22, 22))
+
+
+    def createSettingPanel(self):
+        self.settings_panel = QtWidgets.QWidget(self.centralwidget)
+        self.settings_panel.setGeometry(20, 50, 40, 40)
+        self.settings_panel.setObjectName("settings_panel")
+
+        self.design_setting_panel = self.settings_panel.setStyleSheet("""
+            QWidget {
+                background-color: rgba(255, 255, 255, 0.45);
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.6);
+            }
+            QLabel {
+                background: transparent;
+                border: none;
+            }                                                          
+        """)
+
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(15)
+        shadow.setOffset(0, 4)
+        shadow.setColor(QColor(0, 0, 0, 30))
+        self.settings_panel.setGraphicsEffect(shadow)
+
+        self.settings_icon = QLabel(self.settings_panel)
+        self.settings_icon.setPixmap(QPixmap("../image/icon/settings_regular_icon.svg"))
+        self.settings_icon.setGeometry(0, 0, 40, 40)
+        self.settings_icon.setAlignment(Qt.AlignCenter)
+
+        self.create_SettingContent()
+
+        self.settings_open = False
+
+        self.settings_icon.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        self.settings_icon.mousePressEvent = self.toggleSettingsPanel
+
+    def create_SettingContent(self):
+        self.settings_content = QtWidgets.QWidget(self.settings_panel)
+        self.settings_content.setGeometry(0, 0, 220, 375)
+        self.settings_content.setStyleSheet("background: transparent; border: none;")
+        self.settings_content.hide()
+
+        self.icon_sett = QtWidgets.QPushButton(self.settings_content)
+        self.icon_sett.setGeometry(0, 0, 40, 40)
+        self.icon_sett.setStyleSheet("background: transparent; border: 5px;")
+        self.icon_sett.setCursor(Qt.PointingHandCursor)
+        self.icon_sett.mousePressEvent = self.toggleSettingsPanel
+
+        self.btn_full_settings = QtWidgets.QLabel(self.settings_content)
+        self.btn_full_settings.setPixmap(QPixmap("../image/icon/arrow_right_regular_icon.svg"))
+        self.btn_full_settings.setGeometry(185, 0, 40, 40)
+        self.btn_full_settings.setCursor(Qt.PointingHandCursor)
+        self.btn_full_settings.setStyleSheet("""
+            QPushButton { color: #581c87; font-weight: bold; font-size: 16px; background: transparent; }
+            QPushButton:hover { background: rgba(255,255,255,0.3); border-radius: 15px; }
+        """)
+        self.btn_full_settings.mousePressEvent = self.full_setting_panel
+
+        self.createQuickSettingRow("Темна тема", 60)
+        self.createQuickSettingRow("Автозапуск", 110)
+        self.createQuickSettingRow("Голос", 160)
+
+        self.settings_full = False
+
+    def createQuickSettingRow(self, text, y_pos):
+        """ Допоміжна функція для створення рядка налаштувань """
+        # Текст
+        lbl = QLabel(text, self.settings_content)
+        lbl.setGeometry(20, y_pos, 120, 20)
+        lbl.setStyleSheet("color: #581c87; font-size: 11pt;")
+        
+        # Тумблер (GlassToggle)
+        toggle = GlassToggle(self.settings_content)
+        toggle.move(150, y_pos) # Позиція X=150 (справа)
+
+
+
+    def full_setting_panel(self, event=None):
+        anim = QPropertyAnimation(self.settings_panel, b"geometry")
+        anim.setDuration(500)
+        anim.setEasingCurve(QEasingCurve.OutQuint)
+
+
+        if not self.settings_full:
+            anim.setStartValue(QRect(20, 50, 220, 375))
+            anim.setEndValue(QRect(0, 0, 960, 600))
+            self.settings_panel.setStyleSheet("""
+                QWidget {
+                    background-color: rgba(255, 255, 255, 0.45);
+                    border-radius: 0px;
+                    border: 1px solid rgba(255, 255, 255, 0.6);
+                }
+                QLabel {
+                    background: transparent;
+                    border: none;
+                }             
+                
+            """)
+            self.main_container.show()
+            self.settings_full = True
+        else:
+            anim.setStartValue(QRect(0, 0, 960, 600))
+            anim.setEndValue(QRect(20, 50, 40, 40))
+            self.settings_panel.setStyleSheet("""
+                QWidget {
+                    background-color: rgba(255, 255, 255, 0.45);
+                    border-radius: 5px;
+                    border: 1px solid rgba(255, 255, 255, 0.6);
+                }			
+                
+                QLabel {
+                    background: transparent;
+                    border: none;
+                }                                 
+            """)
+            self.settings_content.hide()
+            self.settings_open = False
+            self.settings_full = False
+
+        anim.start()
+        self.settings_panel.anim = anim
+
+
+    def toggleSettingsPanel(self, event=None):
+        anim = QPropertyAnimation(self.settings_panel, b"geometry")
+        anim.setDuration(400)
+        anim.setEasingCurve(QEasingCurve.OutBack)
+
+        if not self.settings_open:
+            anim.setStartValue(QRect(20, 50, 40, 40))
+            anim.setEndValue(QRect(20, 50, 220, 375))
+            self.settings_panel.setStyleSheet("""
+                QWidget {
+                    background-color: rgba(255, 255, 255, 0.45);
+                    border-radius: 14px;
+                    border: 1px solid rgba(255, 255, 255, 0.6);
+                }
+                QLabel {
+                    background: transparent;
+                    border: none;
+                }             
+                
+            """)
+            self.settings_content.show()
+            
+            self.settings_open = True
+        else:
+            anim.setStartValue(QRect(20, 50, 220, 375))
+            anim.setEndValue(QRect(20, 50, 40, 40))
+            self.settings_panel.setStyleSheet("""
+                QWidget {
+                    background-color: rgba(255, 255, 255, 0.45);
+                    border-radius: 5px;
+                    border: 1px solid rgba(255, 255, 255, 0.6);
+                }			
+                
+                QLabel {
+                    background: transparent;
+                    border: none;
+                }                                 
+            """)
+            self.settings_content.hide()
+            self.settings_open = False
+
+        anim.start()
+        self.settings_panel.anim = anim
+
+                
+
+
+    def createHistoryPanel(self):
+        # Створюємо панель (контейнер)
+        self.history_panel = QtWidgets.QWidget(self.centralwidget)
+        # Початкова позиція справа (X=900, Y=50)
+        self.history_panel.setGeometry(900, 50, 40, 40)
+        self.history_panel.setObjectName("history_panel")
+
+        # Стиль ідентичний налаштуванням (скло)
+        self.design_history_panel = self.history_panel.setStyleSheet("""
+            QWidget {
+                background-color: rgba(255, 255, 255, 0.45);
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.6);
+            }
+            QLabel {
+                background: transparent;
+                border: none;
+            }                                                      
+        """)
+
+        # Тінь
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(15)
+        shadow.setOffset(0, 4)
+        shadow.setColor(QColor(0, 0, 0, 30))
+        self.history_panel.setGraphicsEffect(shadow)
+
+        # Іконка на згорнутій панелі
+        self.history_icon = QLabel(self.history_panel)
+        self.history_icon.setPixmap(QPixmap("../image/icon/history_regular_icon.svg"))
+        self.history_icon.setGeometry(0, 0, 40, 40)
+        self.history_icon.setAlignment(Qt.AlignCenter)
+
+        # Створюємо контент (спочатку прихований)
+        self.create_HistoryContent()
+
+        self.history_open = False
+        self.history_full = False
+
+        # Логіка кліків (як ми робили для налаштувань)
+        self.history_icon.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        self.history_icon.setCursor(Qt.PointingHandCursor)
+        self.history_icon.mousePressEvent = self.toggleHistoryPanel
+
+    def create_HistoryContent(self):
+        self.history_content = QtWidgets.QWidget(self.history_panel)
+        # Розмір контенту: ширина 245, висота 450
+        self.history_content.setGeometry(0, 0, 245, 450)
+        self.history_content.setStyleSheet("background: transparent; border: none;")
+        self.history_content.hide()
+
+        # Кнопка-іконка всередині (щоб клікати для закриття)
+        # Важливо: у налаштувань вона зліва (0,0), тут краще теж лишити її логічно
+        # або змістити вправо, якщо хочеш дзеркальності. Я залишу зліва для зручності.
+        self.icon_hist_inner = QtWidgets.QPushButton(self.history_content)
+        self.icon_hist_inner.setGeometry(0, 0, 40, 40) # Або (205, 0) якщо хочеш справа
+        self.icon_hist_inner.setStyleSheet("background: transparent; border: none;")
+        self.icon_hist_inner.setCursor(Qt.PointingHandCursor)
+        self.icon_hist_inner.mousePressEvent = self.toggleHistoryPanel
+        
+        # Кнопка розгортання на весь екран (стрілочка)
+        self.btn_full_history = QtWidgets.QLabel(self.history_content)
+        self.btn_full_history.setPixmap(QPixmap("../image/icon/arrow_right_regular_icon.svg"))
+        # Розміщуємо стрілку з іншого боку або так само
+        self.btn_full_history.setGeometry(200, 0, 40, 40)
+        self.btn_full_history.setCursor(Qt.PointingHandCursor)
+        self.btn_full_history.setStyleSheet("""
+            QLabel:hover { background: rgba(255,255,255,0.3); border-radius: 15px; }
+        """)
+        self.btn_full_history.mousePressEvent = self.full_history_panel
+
+        # Заголовок "Історія"
+        self.lbl_history_title = QLabel("Історія", self.history_content)
+        self.lbl_history_title.setGeometry(60, 10, 120, 20)
+        self.lbl_history_title.setAlignment(Qt.AlignCenter)
+        self.lbl_history_title.setStyleSheet("color: #581c87; font-size: 12pt; font-weight: bold;")
+
+        # Scroll Area для списку
+        self.history_scroll = QtWidgets.QScrollArea(self.history_content)
+        self.history_scroll.setGeometry(10, 50, 225, 390)
+        self.history_scroll.setWidgetResizable(True)
+        # Прибираємо рамки самого скролу, щоб було "чисто"
+        self.history_scroll.setStyleSheet("""
+            QScrollArea { background: transparent; border: none; }
+            QScrollBar:vertical { width: 8px; background: transparent; }
+            QScrollBar::handle:vertical { background: rgba(88, 28, 135, 0.3); border-radius: 4px; }
+        """)
+        
+        self.scroll_content_widget = QtWidgets.QWidget()
+        self.scroll_layout = QtWidgets.QVBoxLayout(self.scroll_content_widget)
+        self.history_scroll.setWidget(self.scroll_content_widget)
+
+    def toggleHistoryPanel(self, event=None):
+        anim = QPropertyAnimation(self.history_panel, b"geometry")
+        anim.setDuration(400)
+        anim.setEasingCurve(QEasingCurve.OutBack)
+
+        if not self.history_open:
+            # ВІДКРИТТЯ (Initial -> Quick View)
+            # Старт: X=900, W=40 (правий край = 940)
+            anim.setStartValue(QRect(900, 50, 40, 40))
+            
+            # Фініш: Ширина 245. Щоб правий край лишився 940, X має стати: 940 - 245 = 695
+            anim.setEndValue(QRect(695, 50, 245, 450))
+            
+            self.history_panel.setStyleSheet("""
+                QWidget {
+                    background-color: rgba(255, 255, 255, 0.45);
+                    border-radius: 14px;
+                    border: 1px solid rgba(255, 255, 255, 0.6);
+                }
+                QLabel { background: transparent; border: none; }
+            """)
+            self.history_content.show()
+            self.history_open = True
+        else:
+            # ЗАКРИТТЯ (Quick View -> Initial)
+            anim.setStartValue(QRect(695, 50, 245, 450))
+            anim.setEndValue(QRect(900, 50, 40, 40))
+            
+            self.history_panel.setStyleSheet("""
+                QWidget {
+                    background-color: rgba(255, 255, 255, 0.45);
+                    border-radius: 8px;
+                    border: 1px solid rgba(255, 255, 255, 0.6);
+                }
+                QLabel { background: transparent; border: none; }
+            """)
+            self.history_content.hide()
+            self.history_open = False
+            self.history_full = False # Скидаємо прапорець повного екрану
+
+        anim.start()
+        self.history_panel.anim = anim
+
+    def full_history_panel(self, event=None):
+        anim = QPropertyAnimation(self.history_panel, b"geometry")
+        anim.setDuration(500)
+        anim.setEasingCurve(QEasingCurve.OutBack)
+
+        if not self.history_full:
+            # РОЗГОРТАННЯ НА ВЕСЬ ЕКРАН
+            anim.setStartValue(QRect(695, 50, 245, 450)) # Поточний стан
+            anim.setEndValue(QRect(0, 0, 960, 600))      # На все вікно
+            
+            self.history_panel.setStyleSheet("""
+                QWidget {
+                    background-color: rgba(255, 255, 255, 0.45);
+                    border-radius: 0px;
+                    border: 1px solid rgba(255, 255, 255, 0.6);
+                }
+                QLabel { background: transparent; border: none; }
+            """)
+            self.history_full = True
+        else:
+            # ПОВЕРНЕННЯ ДО МАЛЕНЬКОГО ВІКНА (не до кнопки, а до панелі 245х450)
+            anim.setStartValue(QRect(0, 0, 960, 600))
+            anim.setEndValue(QRect(900, 50, 40, 40)) # Або одразу згортаємо в кнопку, як у налаштуваннях
+            
+            # Якщо хочеш як у налаштуваннях (одразу в іконку):
+            self.history_panel.setStyleSheet("""
+                QWidget {
+                    background-color: rgba(255, 255, 255, 0.45);
+                    border-radius: 8px;
+                    border: 1px solid rgba(255, 255, 255, 0.6);
+                }
+                QLabel { background: transparent; border: none; }
+            """)
+            self.history_content.hide()
+            self.history_open = False
+            self.history_full = False
+
+        anim.start()
+        self.history_panel.anim = anim
+
+
+
+
+        
+if __name__ == "__main__":
+    app = QtWidgets.QApplication(sys.argv)
+    ui = UI_MainWindow()
+    ui.show()
+    sys.exit(app.exec_())

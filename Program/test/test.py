@@ -1,11 +1,10 @@
-threads = {}
+import screeninfo
 
+from screeninfo import get_monitors
 
-while True:
-    name = input("name: ")
-    thread = input("thread: ")
-    worker = input("worker ")
+monitor_count = len(get_monitors())
+print(f"Number of monitors detected: {monitor_count}")
 
-    threads[name] = {"thread":thread, "worker":worker}
-
-    print(threads)
+# You can also iterate through them to see details:
+for i, monitor in enumerate(get_monitors()):
+    print(f"Monitor {i+1}: {monitor}")

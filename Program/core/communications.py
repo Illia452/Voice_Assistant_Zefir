@@ -8,8 +8,8 @@ class Communications(QObject):
     stop_push_window = pyqtSignal()
     start_gstt = pyqtSignal()
     stop_gstt = pyqtSignal()
-    text_from_gstt = pyqtSignal(str)
+    stream_text_gstt = pyqtSignal(str)
     start_search_silence = pyqtSignal()
-    text_command = pyqtSignal(str)
+    final_command = pyqtSignal(str)
 
 comm = Communications()

@@ -3,6 +3,7 @@ from pyqt5_ui.push_window import PushWindow
 from wakeword_pipeline.vosk_stt_en import Speech_Recognition
 from gstt_processes.logic_gstt import LogicGSTT
 from gstt_processes.google_stt import GSTT
+from work_with_command.analyze_command import AnalyzeCommand
 import sys
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QThread
@@ -33,6 +34,15 @@ class Google_STT_Worker(QObject):
         self.google_stt.run()
 
 
+
+class Analize_Command_Worker(QObject):
+    finished = pyqtSignal()
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        self.analyze_command = AnalyzeCommand()
+
 class Thread_Manager():
     def __init__(self):
         self.threads = {}
@@ -57,6 +67,10 @@ class Thread_Manager():
         worker = Google_STT_Worker(self.logic_gstt)
         self.start_threads("google_stt", worker, worker.run)
 
+    def create_analyze_command(self):
+        worker = Analize_Command_Worker()
+        self.start_threads("analyze_command", worker, worker.run)
+
 
 
 if __name__ == "__main__":
@@ -70,5 +84,6 @@ if __name__ == "__main__":
     thread_manager = Thread_Manager()
     thread_manager.create_wakeword_pipeline()
     thread_manager.create_googlestt()
+    thread_manager.create_analyze_command()
 
     sys.exit(app.exec_())
