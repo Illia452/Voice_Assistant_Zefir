@@ -11,5 +11,6 @@ class Communications(QObject):
     stream_text_gstt = pyqtSignal(str)
     start_search_silence = pyqtSignal()
     final_command = pyqtSignal(str)
+    reset_wakeword = pyqtSignal()
 
 comm = Communications()

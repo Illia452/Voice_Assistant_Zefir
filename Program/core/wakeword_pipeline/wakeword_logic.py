@@ -25,6 +25,7 @@ class WakeWordChecker():
         self.logic_after_wakeword = LogicAfterWakeWord()
         self.is_wakeword = False
         self.time_wakeword = 0
+        comm.reset_wakeword.connect(self.reset_wakeword)
 
     async def check_wakeword_status(self, text):
         if self.is_wakeword:
@@ -59,7 +60,10 @@ class WakeWordChecker():
             self.speech_waiter.check_wait_time(self)
             )
         
-
+    def reset_wakeword(self):
+        self.is_wakeword = False
+        print("Ключове слово скинуто")
+        
 class SpeechWaiter():
     async def check_wait_time(self, wakeword_cheker):
 
@@ -71,7 +75,6 @@ class SpeechWaiter():
 
         except asyncio.CancelledError:
             print("ТАйМЕР СКАСОВАНО БО Є МОВЛЕННЯ")
-            wakeword_cheker.is_wakeword = False
 
 
 
@@ -98,14 +101,18 @@ class SilenceSearcher():
             self.list_silence = detect_silence(united_audio, min_silence_len=500, silence_thresh=-40, seek_step=100) # налаштування для функції тиші
 
             for silence in self.list_silence:
-                if (silence[1] - silence[0]) >= 2800: # шукаємо тишу в 1800мс
+                if (silence[1] - silence[0]) >= 2800: # шукаємо тишу в 2800мс
                     print("ЗНАЙДЕНО ТИШУ")
+
+                    self.active_is = False
+                    self.list_audio = []
+
                     comm.stop_push_window.emit()
                     comm.stop_gstt.emit()
-                    self.active_is = False
-                    self.list_silence = []
+                    comm.reset_wakeword.emit()
     
                     break
 
     def activate_searcher(self):
+        self.list_audio = []
         self.active_is = True
