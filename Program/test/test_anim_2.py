@@ -11,6 +11,27 @@ from PyQt5.QtGui import QColor, QFont, QPixmap, QPainter, QIcon
 
 
 
+class ModernRadioButton(QtWidgets.QRadioButton):
+    def __init__(self, text, parent=None):
+        super().__init__(text, parent)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setStyleSheet("""
+            QRadioButton {
+                font-size: 14px; color: #4b5563; padding: 5px;
+            }
+            QRadioButton::indicator {
+                width: 18px; height: 18px;
+                border-radius: 11px;
+                border: 2px solid #9ca3af; /* Сірий обідок коли вимкнено */
+                background: transparent;
+            }
+            QRadioButton::indicator:checked {
+                border: 1px solid #8b5cf6; /* Товстий фіолетовий обідок створює ефект крапки всередині */
+                border-radius: 10px;
+                background: #8b5cf6;
+            }
+            QRadioButton:hover { color: #6d28d9; }
+        """)
 
 class GlassToggle(QCheckBox):
     def __init__(self, parent=None):
@@ -41,7 +62,7 @@ class GlassToggle(QCheckBox):
         
         is_checked = self.isChecked()
         # Кольори: насичений фіолетовий для "ON", легке скло для "OFF"
-        bg_color = QColor(147, 51, 234, 230) if is_checked else QColor(255, 255, 255, 80)
+        bg_color = QColor(147, 51, 234, 230) if is_checked else QColor("#EDE9FE")
         
         p.setBrush(bg_color)
         p.setPen(Qt.NoPen)
@@ -101,14 +122,40 @@ class UI_MainWindow(QMainWindow):
         self.setFocusPolicy(Qt.ClickFocus)
 
     def close_set(self):
-            self.main_container.hide()
+        # 1. Анімація зникнення (Fade Out)
+        self.anim_opacity_close = QPropertyAnimation(self.fade_effect, b"opacity")
+        self.anim_opacity_close.setDuration(400)
+        self.anim_opacity_close.setStartValue(1.0)
+        self.anim_opacity_close.setEndValue(0.0)
+        self.anim_opacity_close.setEasingCurve(QEasingCurve.InQuad)
+
+        # 2. Анімація опускання вниз
+        self.anim_pos_close = QPropertyAnimation(self.main_container, b"geometry")
+        self.anim_pos_close.setDuration(400)
+        self.anim_pos_close.setStartValue(QRect(0, 0, 960, 600))
+        self.anim_pos_close.setEndValue(QRect(0, 30, 960, 600))
+        
+        # 3. Коли анімація закінчиться — реально сховати віджет (hide)
+        self.anim_opacity_close.finished.connect(self.main_container.hide)
+
+        self.anim_opacity_close.start()
+        self.anim_pos_close.start()
 
     def full_setting_content(self):
-        # Головний контейнер (вже створений тобою)
+        # Головний контейнер
         self.main_container = QtWidgets.QWidget(self.centralwidget)
         self.main_container.setGeometry(0, 0, 960, 600)
-        self.main_container.setStyleSheet("background: #EDE9FE;") # Світла лаванда
-        self.main_container.hide() # За замовчуванням приховано
+        self.main_container.setStyleSheet("background: #EDE9FE;") 
+        
+        # 1. Створюємо ефект прозорості
+        self.fade_effect = QGraphicsOpacityEffect(self.main_container)
+        self.main_container.setGraphicsEffect(self.fade_effect)
+        
+        # 2. Ховаємо контейнер і ставимо прозорість на 0
+        self.fade_effect.setOpacity(0)
+        self.main_container.hide()
+
+        self.main_container.raise_()
 
         # --- ОСНОВНИЙ ЛЕЙАУТ ВІКНА ---
         self.layout_full = QtWidgets.QVBoxLayout(self.main_container)
@@ -127,51 +174,35 @@ class UI_MainWindow(QMainWindow):
         self.btn_back_full = QtWidgets.QPushButton("  Назад")
         self.btn_back_full.setCursor(Qt.PointingHandCursor)
         self.btn_back_full.setMinimumSize(100, 40)
-        self.btn_back_full.clicked.connect(self.close_set)
-        # Примітка: використовуй свою іконку стрілки вліво
+        self.btn_back_full.clicked.connect(self.close_set) # Твоя функція закриття
         self.btn_back_full.setIcon(QtGui.QIcon("../image/icon/arrow_left.svg")) 
         self.btn_back_full.setStyleSheet("""
             QPushButton {
-                background-color: white;
-                border-radius: 12px;
-                color: #581c87;
-                font-size: 15px;
-                font-weight: bold;
-                border: 1px solid rgba(139, 92, 246, 0.2);
+                background-color: white; border-radius: 12px; color: #581c87;
+                font-size: 15px; font-weight: bold; border: 1px solid rgba(139, 92, 246, 0.2);
             }
-            QPushButton:hover {
-                background-color: #F5F3FF;
-                border: 1px solid #8b5cf6;
-            }
+            QPushButton:hover { background-color: #F5F3FF; border: 1px solid #8b5cf6; }
         """)
 
-
-
-        # Заголовок по центру
+        # Заголовок
         self.label_title_full = QtWidgets.QLabel("Налаштування")
-        self.label_title_full.setStyleSheet("""
-            font-size: 26px;
-            font-weight: bold;
-            color: #581c87;
-            font-family: 'Roboto';
-        """)
+        self.label_title_full.setStyleSheet("font-size: 26px; font-weight: bold; color: #581c87;")
 
         header_layout.addWidget(self.btn_back_full)
         header_layout.addStretch()
         header_layout.addWidget(self.label_title_full)
         header_layout.addStretch()
-        # Додаємо порожній елемент для ідеальної центровки заголовка
         header_layout.addSpacing(100) 
 
         self.layout_full.addWidget(self.header_frame)
 
-        # --- НИЖНЯ ЧАСТИНА (БОКОВА ПАНЕЛЬ + КОНТЕНТ) ---
+        # --- НИЖНЯ ЧАСТИНА ---
         self.body_container = QtWidgets.QWidget(self.main_container)
         body_layout = QtWidgets.QHBoxLayout(self.body_container)
         body_layout.setContentsMargins(20, 0, 25, 25)
         body_layout.setSpacing(20)
 
-        # 2. БОКОВА ПАНЕЛЬ (SIDEBAR)
+        # 2. БОКОВА ПАНЕЛЬ (МЕНЮ)
         self.sidebar = QtWidgets.QFrame(self.body_container)
         self.sidebar.setFixedWidth(220)
         self.sidebar.setStyleSheet("""
@@ -186,42 +217,40 @@ class UI_MainWindow(QMainWindow):
         sidebar_inner_layout.setContentsMargins(10, 20, 10, 20)
         sidebar_inner_layout.setSpacing(10)
 
-        # Стиль кнопок меню
+        # Стиль кнопок
         menu_button_style = """
             QPushButton {
-                text-align: left;
-                padding-left: 15px;
-                height: 45px;
-                border: none;
-                border-radius: 12px;
-                color: #6B7280;
-                font-size: 14px;
-                font-weight: 500;
+                text-align: left; padding-left: 15px; height: 45px;
+                border: none; border-radius: 12px;
+                color: #6B7280; font-size: 14px; font-weight: 500;
             }
-            QPushButton:hover {
-                background-color: rgba(255, 255, 255, 0.4);
-                color: #581c87;
-            }
-            QPushButton:checked {
-                background-color: white;
-                color: #a855f7;
-                font-weight: bold;
-            }
+            QPushButton:hover { background-color: rgba(255, 255, 255, 0.4); color: #581c87; }
+            QPushButton:checked { background-color: white; color: #a855f7; font-weight: bold; }
         """
 
+        # Створення кнопок меню
         self.btn_menu_general = QtWidgets.QPushButton("⚡ Загальні")
         self.btn_menu_voice = QtWidgets.QPushButton("🎙️ Голос")
+        self.btn_menu_commands = QtWidgets.QPushButton("⌨️ Команди") # Новий розділ
         self.btn_menu_interface = QtWidgets.QPushButton("🎨 Інтерфейс")
         self.btn_menu_about = QtWidgets.QPushButton("ℹ️ Про систему")
 
-        for btn in [self.btn_menu_general, self.btn_menu_voice, self.btn_menu_interface, self.btn_menu_about]:
+        # Список кнопок для зручного керування
+        self.menu_buttons = [
+            self.btn_menu_general, 
+            self.btn_menu_voice, 
+            self.btn_menu_commands,
+            self.btn_menu_interface, 
+            self.btn_menu_about
+        ]
+
+        for btn in self.menu_buttons:
             btn.setCheckable(True)
             btn.setCursor(Qt.PointingHandCursor)
             btn.setStyleSheet(menu_button_style)
             sidebar_inner_layout.addWidget(btn)
 
-        self.btn_menu_general.setChecked(True) # Активна перша за замовчуванням
-        sidebar_inner_layout.addStretch() # Притискає кнопки до верху
+        sidebar_inner_layout.addStretch()
 
         # 3. ОБЛАСТЬ КОНТЕНТУ (STACKED WIDGET)
         self.content_stack = QtWidgets.QStackedWidget(self.body_container)
@@ -233,53 +262,209 @@ class UI_MainWindow(QMainWindow):
             }
         """)
 
-        # --- ПРИКЛАД СТОРІНКИ (General Page) ---
+        # --- СТВОРЕННЯ СТОРІНОК ---
+        
+        # Стор. 0: Загальні (Вже готова)
         self.page_general = QtWidgets.QWidget()
-        page_gen_layout = QtWidgets.QVBoxLayout(self.page_general)
-        page_gen_layout.setContentsMargins(30, 30, 30, 30)
-        page_gen_layout.setSpacing(20)
+        self.setup_general_page() # Я виніс наповнення в окремий метод, щоб тут було чисто
+        self.content_stack.addWidget(self.page_general)
 
-        # Картка налаштування 1
-        self.card_1 = QtWidgets.QFrame()
-        self.card_1.setMinimumHeight(100)
-        self.card_1.setStyleSheet("""
+        # Стор. 1: Голос (Пуста заготовка)
+        self.page_voice = QtWidgets.QWidget()
+        self.setup_placeholder_page(self.page_voice, "Налаштування Голосу та Мікрофону")
+        self.content_stack.addWidget(self.page_voice)
+
+        # Стор. 2: Команди (Пуста заготовка)
+        self.page_commands = QtWidgets.QWidget()
+        self.setup_commands_page()
+        self.content_stack.addWidget(self.page_commands)
+
+        # Стор. 3: Інтерфейс (Пуста заготовка)
+        self.page_interface = QtWidgets.QWidget()
+        self.setup_placeholder_page(self.page_interface, "Налаштування Зовнішнього Вигляду")
+        self.content_stack.addWidget(self.page_interface)
+
+        # Стор. 4: Про систему (Пуста заготовка)
+        self.page_about = QtWidgets.QWidget()
+        self.setup_placeholder_page(self.page_about, "Інформація про Асистента")
+        self.content_stack.addWidget(self.page_about)
+
+
+        # --- ЛОГІКА ПЕРЕМИКАННЯ ---
+        # Використовуємо lambda, щоб передати індекс сторінки
+        self.btn_menu_general.clicked.connect(lambda: self.switch_settings_tab(0, self.btn_menu_general))
+        self.btn_menu_voice.clicked.connect(lambda: self.switch_settings_tab(1, self.btn_menu_voice))
+        self.btn_menu_commands.clicked.connect(lambda: self.switch_settings_tab(2, self.btn_menu_commands))
+        self.btn_menu_interface.clicked.connect(lambda: self.switch_settings_tab(3, self.btn_menu_interface))
+        self.btn_menu_about.clicked.connect(lambda: self.switch_settings_tab(4, self.btn_menu_about))
+
+        # Активуємо першу вкладку на старті
+        self.switch_settings_tab(0, self.btn_menu_general)
+
+        # Фінальна збірка
+        body_layout.addWidget(self.sidebar)
+        body_layout.addWidget(self.content_stack)
+        self.layout_full.addWidget(self.body_container)
+
+
+    def createGlassCard(self):
+        """ Створює стилізовану білу напівпрозору картку """
+        card = QtWidgets.QFrame()
+        card.setStyleSheet("""
             QFrame {
                 background-color: rgba(255, 255, 255, 0.6);
                 border-radius: 15px;
                 border: 1px solid white;
             }
         """)
-        
-        card_1_layout = QtWidgets.QHBoxLayout(self.card_1)
-        card_1_layout.setContentsMargins(20, 0, 20, 0)
-        
-        info_layout = QtWidgets.QVBoxLayout()
-        info_layout.setAlignment(Qt.AlignCenter)
-        lbl_main = QtWidgets.QLabel("Запускати разом з Windows")
-        lbl_main.setStyleSheet("font-size: 16px; font-weight: bold; color: #4B5563; border:none;")
-        lbl_desc = QtWidgets.QLabel("Асистент буде стартувати автоматично")
-        lbl_desc.setStyleSheet("font-size: 12px; color: #9CA3AF; border:none;")
-        info_layout.addWidget(lbl_main)
-        info_layout.addWidget(lbl_desc)
-        
-        card_1_layout.addLayout(info_layout)
-        card_1_layout.addStretch()
-        
-        # Додаємо твій тумблер GlassToggle
-        self.toggle_win = GlassToggle(self.card_1)
-        card_1_layout.addWidget(self.toggle_win)
+        return card
 
-        page_gen_layout.addWidget(self.card_1)
-        page_gen_layout.addStretch() # Тримає картки зверху
+    # --- ДОДАТКОВІ МЕТОДИ (Встав їх у клас UI_MainWindow) ---
 
-        self.content_stack.addWidget(self.page_general)
-
-        # Збираємо все докупи
-        body_layout.addWidget(self.sidebar)
-        body_layout.addWidget(self.content_stack)
+    def switch_settings_tab(self, index, active_btn):
+        """ Перемикає сторінку в StackedWidget і підсвічує активну кнопку """
+        self.content_stack.setCurrentIndex(index)
         
-        self.layout_full.addWidget(self.body_container)
+        # Знімаємо виділення з усіх кнопок
+        for btn in self.menu_buttons:
+            btn.setChecked(False)
+        
+        # Виділяємо натиснуту
+        active_btn.setChecked(True)
 
+    def setup_general_page(self):
+        """ Наповнення сторінки 'Загальні' """
+        layout = QtWidgets.QVBoxLayout(self.page_general)
+        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(20)
+        layout.setAlignment(Qt.AlignTop) # Щоб елементи не розтягувались по вертикалі
+
+        # Картка 1 (Приклад)
+        card = QtWidgets.QFrame()
+        card.setMinimumHeight(80)
+        card.setStyleSheet("background: rgba(255,255,255,0.6); border-radius: 15px; border: 1px solid white;")
+        
+        row = QtWidgets.QHBoxLayout(card)
+        row.setContentsMargins(20, 0, 20, 0)
+        
+        text_layout = QtWidgets.QVBoxLayout()
+        lbl_title = QtWidgets.QLabel("Запускати разом з Windows")
+        lbl_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #4B5563; border: none;")
+        lbl_desc = QtWidgets.QLabel("Автоматичний старт при вході")
+        lbl_desc.setStyleSheet("font-size: 12px; color: #9CA3AF; border: none;")
+        text_layout.addWidget(lbl_title)
+        text_layout.addWidget(lbl_desc)
+        
+        row.addLayout(text_layout)
+        row.addStretch()
+        row.addWidget(GlassToggle(card)) # Твій тумблер
+
+        layout.addWidget(card)
+        # Тут можна додати інші картки для цієї сторінки...
+
+    def setup_placeholder_page(self, page_widget, text):
+        """ Тимчасовий метод для пустих сторінок, щоб ти бачив, що вони працюють """
+        layout = QtWidgets.QVBoxLayout(page_widget)
+        lbl = QtWidgets.QLabel(text)
+        lbl.setAlignment(Qt.AlignCenter)
+        lbl.setStyleSheet("font-size: 20px; color: #581c87; font-weight: bold;")
+        layout.addWidget(lbl)
+
+
+    # --- НАПОВНЕННЯ СТОРІНКИ "КОМАНДИ" ---
+    def setup_commands_page(self):
+        # Очищаємо, якщо там щось було (для заглушки)
+        if self.page_commands.layout():
+            QtWidgets.QWidget().setLayout(self.page_commands.layout())
+            
+        layout = QtWidgets.QVBoxLayout(self.page_commands)
+        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(20)
+        layout.setAlignment(Qt.AlignTop)
+
+        # --- КАРТКА 1: ФОРМАТ СКРІНШОТІВ ---
+        card_format = self.createGlassCard()
+        card_format_layout = QtWidgets.QVBoxLayout(card_format)
+        card_format_layout.setContentsMargins(20, 20, 20, 20)
+
+        # Заголовок картки
+        lbl_fmt_title = QtWidgets.QLabel("Формат збереження")
+        lbl_fmt_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #581c87; margin-bottom: 5px;")
+        card_format_layout.addWidget(lbl_fmt_title)
+
+        # Радіокнопки
+        self.radio_png = ModernRadioButton("PNG (Висока якість, прозорість)")
+        self.radio_jpg = ModernRadioButton("JPG (Менший розмір)")
+        self.radio_ask = ModernRadioButton("Запитувати щоразу")
+
+        self.radio_png.setChecked(True) # За замовчуванням PNG
+
+        # Групуємо їх, щоб не розлазились
+        options_layout = QtWidgets.QVBoxLayout()
+        options_layout.setSpacing(10)
+        options_layout.addWidget(self.radio_png)
+        options_layout.addWidget(self.radio_jpg)
+        options_layout.addWidget(self.radio_ask)
+        
+        card_format_layout.addLayout(options_layout)
+        layout.addWidget(card_format)
+
+        # --- КАРТКА 2: ШЛЯХ ЗБЕРЕЖЕННЯ ---
+        card_path = self.createGlassCard()
+        card_path_layout = QtWidgets.QVBoxLayout(card_path)
+        card_path_layout.setContentsMargins(20, 20, 20, 20)
+
+        lbl_path_title = QtWidgets.QLabel("Папка для скріншотів")
+        lbl_path_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #581c87; margin-bottom: 5px;")
+        
+        # Рядок з шляхом і кнопкою
+        path_row = QtWidgets.QHBoxLayout()
+        
+        # Іконка папки (текстова або SVG)
+        folder_icon = QtWidgets.QLabel("📂") 
+        folder_icon.setStyleSheet("font-size: 20px; margin-right: 10px;")
+
+        # Лейбл, який показує поточний шлях
+        self.lbl_current_path = QtWidgets.QLabel("C:/Users/Pictures/Screenshots")
+        self.lbl_current_path.setStyleSheet("""
+            background: rgba(255,255,255,0.5); 
+            border-radius: 8px; padding: 5px 10px; 
+            color: #4b5563; font-family: consolas; font-size: 13px;
+        """)
+        self.lbl_current_path.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
+        # Кнопка зміни
+        btn_change_path = QtWidgets.QPushButton("Змінити")
+        btn_change_path.setCursor(Qt.PointingHandCursor)
+        btn_change_path.setStyleSheet("""
+            QPushButton {
+                background-color: #8b5cf6; color: white; border-radius: 8px;
+                padding: 6px 15px; font-weight: bold; font-size: 13px; border: none;
+            }
+            QPushButton:hover { background-color: #7c3aed; }
+        """)
+        btn_change_path.clicked.connect(self.choose_folder_dialog)
+
+        path_row.addWidget(folder_icon)
+        path_row.addWidget(self.lbl_current_path)
+        path_row.addWidget(btn_change_path)
+
+        card_path_layout.addWidget(lbl_path_title)
+        card_path_layout.addLayout(path_row)
+        
+        layout.addWidget(card_path)
+        
+        # Розтяжка знизу
+        layout.addStretch()
+
+    def choose_folder_dialog(self):
+        """ Відкриває провідник для вибору папки """
+        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Оберіть папку для скріншотів")
+        if folder:
+            # Оновлюємо текст лейбла на вибраний шлях
+            self.lbl_current_path.setText(folder)
+            # ТУТ МОЖНА ЗБЕРЕГТИ ШЛЯХ У ФАЙЛ НАЛАШТУВАНЬ
+            print(f"Новий шлях збережено: {folder}")
 
 
     def createTitleStatus(self):
@@ -591,49 +776,32 @@ class UI_MainWindow(QMainWindow):
 
 
     def full_setting_panel(self, event=None):
-        anim = QPropertyAnimation(self.settings_panel, b"geometry")
-        anim.setDuration(500)
-        anim.setEasingCurve(QEasingCurve.OutQuint)
+        # 1. Закриваємо маленьке швидке меню, якщо воно відкрите
+        if self.settings_open:
+            self.toggleSettingsPanel()
 
+        # 2. Показуємо великий контейнер і піднімаємо його наверх
+        self.main_container.show()
+        self.main_container.raise_()
 
-        if not self.settings_full:
-            anim.setStartValue(QRect(20, 50, 220, 375))
-            anim.setEndValue(QRect(0, 0, 960, 600))
-            self.settings_panel.setStyleSheet("""
-                QWidget {
-                    background-color: rgba(255, 255, 255, 0.45);
-                    border-radius: 0px;
-                    border: 1px solid rgba(255, 255, 255, 0.6);
-                }
-                QLabel {
-                    background: transparent;
-                    border: none;
-                }             
-                
-            """)
-            self.main_container.show()
-            self.settings_full = True
-        else:
-            anim.setStartValue(QRect(0, 0, 960, 600))
-            anim.setEndValue(QRect(20, 50, 40, 40))
-            self.settings_panel.setStyleSheet("""
-                QWidget {
-                    background-color: rgba(255, 255, 255, 0.45);
-                    border-radius: 5px;
-                    border: 1px solid rgba(255, 255, 255, 0.6);
-                }			
-                
-                QLabel {
-                    background: transparent;
-                    border: none;
-                }                                 
-            """)
-            self.settings_content.hide()
-            self.settings_open = False
-            self.settings_full = False
+        # 3. Анімація прозорості (Fade In)
+        self.anim_opacity = QPropertyAnimation(self.fade_effect, b"opacity")
+        self.anim_opacity.setDuration(500)
+        self.anim_opacity.setStartValue(0.0)
+        self.anim_opacity.setEndValue(1.0)
+        self.anim_opacity.setEasingCurve(QEasingCurve.OutQuad)
 
-        anim.start()
-        self.settings_panel.anim = anim
+        # 4. Анімація руху знизу вгору (Slide Up)
+        # Вікно стартує трохи нижче (y=30) і піднімається в 0
+        self.anim_pos = QPropertyAnimation(self.main_container, b"geometry")
+        self.anim_pos.setDuration(500)
+        self.anim_pos.setStartValue(QRect(0, 30, 960, 600))
+        self.anim_pos.setEndValue(QRect(0, 0, 960, 600))
+        self.anim_pos.setEasingCurve(QEasingCurve.OutBack) # Ефект легкого "відскоку"
+
+        # 5. Запускаємо обидві анімації разом
+        self.anim_opacity.start()
+        self.anim_pos.start()
 
 
     def toggleSettingsPanel(self, event=None):
