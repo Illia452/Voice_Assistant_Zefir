@@ -140,9 +140,6 @@ def listen_print_loop(responses: object, self) -> str:
 
     for response in responses:
         if self.active_is == False:
-            print("ЗУПИНОЧКА")
-            comm.final_command.emit(transcript)
-            transcript = ''
             break
         if not response.results:
             continue
@@ -183,6 +180,10 @@ def listen_print_loop(responses: object, self) -> str:
             #     break
 
             num_chars_printed = 0
+
+    if transcript and transcript.strip():
+        print("ЗУПИНОЧКА")
+        comm.final_command.emit(transcript)
 
     return transcript
 

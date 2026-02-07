@@ -23,7 +23,7 @@ class PushWindow(QWidget):
         # Qt.Tool - прибирає іконку з панелі завдань 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        font_id = QFontDatabase.addApplicationFont("../data/Roboto-VariableFont_wdth,wght.ttf")
+        font_id = QFontDatabase.addApplicationFont("../fonts/Roboto-VariableFont_wdth,wght.ttf")
         self.font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
         self.setFixedSize(550, 200)
 

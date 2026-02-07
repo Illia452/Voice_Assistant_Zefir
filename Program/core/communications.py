@@ -12,5 +12,7 @@ class Communications(QObject):
     start_search_silence = pyqtSignal()
     final_command = pyqtSignal(str)
     reset_wakeword = pyqtSignal()
+    get_data_ui = pyqtSignal(str)
+    change_data_ui = pyqtSignal()
 
 comm = Communications()

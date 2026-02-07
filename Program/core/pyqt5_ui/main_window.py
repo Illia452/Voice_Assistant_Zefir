@@ -1,14 +1,15 @@
 from PyQt5.QtWidgets import QMainWindow, QLabel
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt, QThread, QObject, pyqtSignal, pyqtSlot
-from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+from PyQt5.QtWidgets import QGraphicsDropShadowEffect, QButtonGroup
 from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtGui import QPixmap
 import sys
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, pyqtProperty, QPoint, QSize
 from PyQt5.QtWidgets import QGraphicsOpacityEffect, QCheckBox
 from PyQt5.QtGui import QColor, QFont, QPixmap, QPainter, QIcon
-
+import json
+import os
 
 
 class ModernRadioButton(QtWidgets.QRadioButton):
@@ -94,10 +95,17 @@ class UI_MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+
+        with open('pyqt5_ui/settings_ui.json', 'r', encoding='utf-8') as f:
+            self.data = json.load(f)
+
         self.setupUI()
 
 
+
+
     def setupUI(self):
+        self.load_settings_data()
         self.createMainWindow()
         self.createTitleStatus()
         self.createInputField_ForCommands()
@@ -319,7 +327,6 @@ class UI_MainWindow(QMainWindow):
         """)
         return card
 
-    # --- ДОДАТКОВІ МЕТОДИ (Встав їх у клас UI_MainWindow) ---
 
     def switch_settings_tab(self, index, active_btn):
         """ Перемикає сторінку в StackedWidget і підсвічує активну кнопку """
@@ -357,7 +364,7 @@ class UI_MainWindow(QMainWindow):
         
         row.addLayout(text_layout)
         row.addStretch()
-        row.addWidget(GlassToggle(card)) # Твій тумблер
+        row.addWidget(GlassToggle(card)) # тумблер
 
         layout.addWidget(card)
         # Тут можна додати інші картки для цієї сторінки...
@@ -370,101 +377,196 @@ class UI_MainWindow(QMainWindow):
         lbl.setStyleSheet("font-size: 20px; color: #581c87; font-weight: bold;")
         layout.addWidget(lbl)
 
+    def choose_folder_dialog(self):
+        """ Відкриває провідник для вибору папки """
+        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Оберіть папку для скріншотів")
+        if folder:
+            # Оновлюємо текст у лейблі
+            self.lbl_current_path.setText(folder)
+            # Зберігаємо у JSON за вкладеним шляхом
+            self.save_setting(["screenshot", "path"], folder)
+            print(f"Новий шлях збережено: {folder}")
 
-    # --- НАПОВНЕННЯ СТОРІНКИ "КОМАНДИ" ---
+    # --- НОВА ЛОГІКА РОБОТИ З НАЛАШТУВАННЯМИ ---
+
+    def load_settings_data(self):
+        # Шлях до файлу (переконайся, що папка pyqt5_ui існує!)
+        self.settings_file = "pyqt5_ui/settings_ui.json"
+        
+        # 1. Базова структура за замовчуванням (обов'язково вкладена)
+        default_path = os.path.join(os.path.expanduser("~"), "Pictures", "Screenshots")
+        self.settings_data = {
+            "screenshot": {
+                "format": "PNG",
+                "path": default_path
+            }
+        }
+
+        # 2. Спроба зчитати файл
+        if os.path.exists(self.settings_file):
+            try:
+                with open(self.settings_file, "r", encoding="utf-8") as f:
+                    content = f.read().strip()
+                    if content: # Перевірка чи файл не порожній
+                        loaded_data = json.loads(content)
+                        # Розумне оновлення: зливаємо screenshot дані
+                        if "screenshot" in loaded_data:
+                            self.settings_data["screenshot"].update(loaded_data["screenshot"])
+            except Exception as e:
+                print(f"Помилка читання JSON: {e}")
+
+
+    def save_setting(self, keys, value):
+        """
+        keys: список ключів, наприклад ["screenshot", "format"]
+        value: значення, яке зберігаємо
+        """
+        # Якщо передали один ключ як рядок, перетворюємо в список для універсальності
+        if isinstance(keys, str):
+            keys = [keys]
+
+        # Проходимо по структурі словника до передостаннього ключа
+        target = self.settings_data
+        for key in keys[:-1]:
+            if key not in target:
+                target[key] = {} # Створюємо категорію, якщо її немає
+            target = target[key]
+
+        # Встановлюємо значення останньому ключу
+        target[keys[-1]] = value
+
+        # Записуємо оновлений словник у файл
+        try:
+            with open(self.settings_file, "w", encoding="utf-8") as f:
+                json.dump(self.settings_data, f, indent=4, ensure_ascii=False)
+            print(f"Збережено в JSON: {keys} -> {value}")
+        except Exception as e:
+            print(f"Помилка запису файлу: {e}")
+
     def setup_commands_page(self):
-        # Очищаємо, якщо там щось було (для заглушки)
+        # Очистка лейауту (стандартна процедура для рефрешу сторінки)
         if self.page_commands.layout():
-            QtWidgets.QWidget().setLayout(self.page_commands.layout())
-            
+             QtWidgets.QWidget().setLayout(self.page_commands.layout())
+
         layout = QtWidgets.QVBoxLayout(self.page_commands)
         layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(20)
         layout.setAlignment(Qt.AlignTop)
 
-        # --- КАРТКА 1: ФОРМАТ СКРІНШОТІВ ---
+        # --- КАРТКА 1: ФОРМАТ ---
         card_format = self.createGlassCard()
-        card_format_layout = QtWidgets.QVBoxLayout(card_format)
-        card_format_layout.setContentsMargins(20, 20, 20, 20)
+        card_fmt_layout = QtWidgets.QVBoxLayout(card_format)
+        card_fmt_layout.setContentsMargins(20, 20, 20, 20)
+        
+        lbl_fmt = QtWidgets.QLabel("Формат збереження")
+        lbl_fmt.setStyleSheet("font-size: 16px; font-weight: bold; color: #581c87;")
+        card_fmt_layout.addWidget(lbl_fmt)
 
-        # Заголовок картки
-        lbl_fmt_title = QtWidgets.QLabel("Формат збереження")
-        lbl_fmt_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #581c87; margin-bottom: 5px;")
-        card_format_layout.addWidget(lbl_fmt_title)
-
-        # Радіокнопки
-        self.radio_png = ModernRadioButton("PNG (Висока якість, прозорість)")
-        self.radio_jpg = ModernRadioButton("JPG (Менший розмір)")
+        # Створюємо кнопки
+        self.radio_png = ModernRadioButton("PNG")
+        self.radio_jpg = ModernRadioButton("JPG")
         self.radio_ask = ModernRadioButton("Запитувати щоразу")
 
-        self.radio_png.setChecked(True) # За замовчуванням PNG
+        # Група кнопок (допомагає керувати ними як єдиним цілим)
+        self.format_group = QtWidgets.QButtonGroup(self)
+        self.format_group.addButton(self.radio_png, 1)
+        self.format_group.addButton(self.radio_jpg, 2)
+        self.format_group.addButton(self.radio_ask, 3)
 
-        # Групуємо їх, щоб не розлазились
-        options_layout = QtWidgets.QVBoxLayout()
-        options_layout.setSpacing(10)
-        options_layout.addWidget(self.radio_png)
-        options_layout.addWidget(self.radio_jpg)
-        options_layout.addWidget(self.radio_ask)
+        # ВІДНОВЛЕННЯ СТАНУ З JSON
+        screenshot_cfg = self.settings_data.get("screenshot", {})
         
-        card_format_layout.addLayout(options_layout)
+        # Формат
+        current_fmt = screenshot_cfg.get("format", "PNG")
+        if current_fmt == "PNG": self.radio_png.setChecked(True)
+        elif current_fmt == "JPG": self.radio_jpg.setChecked(True)
+        else: self.radio_ask.setChecked(True)
+
+        # Шлях (якщо в JSON чомусь порожньо — беремо дефолт)
+        default_p = os.path.join(os.path.expanduser("~"), "Pictures", "Screenshots")
+        saved_path = screenshot_cfg.get("path", default_p)
+
+        # Встановлюємо текст у лейбл
+
+
+        # ПІДКЛЮЧЕННЯ ЗБЕРЕЖЕННЯ
+        # Використовуємо lambda, щоб передати конкретне значення
+        self.radio_png.clicked.connect(lambda: self.save_setting(["screenshot", "format"], "PNG"))
+        self.radio_jpg.clicked.connect(lambda: self.save_setting(["screenshot", "format"], "JPG"))
+        self.radio_ask.clicked.connect(lambda: self.save_setting(["screenshot", "format"], "ASK"))
+
+        layout_opts = QtWidgets.QVBoxLayout()
+        layout_opts.addWidget(self.radio_png)
+        layout_opts.addWidget(self.radio_jpg)
+        layout_opts.addWidget(self.radio_ask)
+        card_fmt_layout.addLayout(layout_opts)
         layout.addWidget(card_format)
 
-        # --- КАРТКА 2: ШЛЯХ ЗБЕРЕЖЕННЯ ---
+        # --- КАРТКА 2: ШЛЯХ ---
+# --- КАРТКА 2: ШЛЯХ ---
         card_path = self.createGlassCard()
         card_path_layout = QtWidgets.QVBoxLayout(card_path)
         card_path_layout.setContentsMargins(20, 20, 20, 20)
 
-        lbl_path_title = QtWidgets.QLabel("Папка для скріншотів")
-        lbl_path_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #581c87; margin-bottom: 5px;")
+        lbl_path_t = QtWidgets.QLabel("Папка для скріншотів")
+        lbl_path_t.setStyleSheet("font-size: 16px; font-weight: bold; color: #581c87; margin-bottom: 5px;")
+        card_path_layout.addWidget(lbl_path_t)
         
-        # Рядок з шляхом і кнопкою
-        path_row = QtWidgets.QHBoxLayout()
-        
-        # Іконка папки (текстова або SVG)
-        folder_icon = QtWidgets.QLabel("📂") 
-        folder_icon.setStyleSheet("font-size: 20px; margin-right: 10px;")
+        # Горизонтальний контейнер для елементів шляху
+        row_path = QtWidgets.QHBoxLayout()
+        row_path.setSpacing(12) # Відступ між іконкою, текстом і кнопкою
 
-        # Лейбл, який показує поточний шлях
-        self.lbl_current_path = QtWidgets.QLabel("C:/Users/Pictures/Screenshots")
+        # 1. Іконка папки
+        icon_label = QtWidgets.QLabel("📂")
+        icon_label.setStyleSheet("font-size: 18px;")
+        
+        # 2. Лейбл шляху (головний елемент)
+        screenshot_cfg = self.settings_data.get("screenshot", {})
+        saved_path = screenshot_cfg.get("path", "Оберіть шлях...")
+        
+        self.lbl_current_path = QtWidgets.QLabel(saved_path)
+        # Вмикаємо ElideMode (три крапки), якщо текст не влазить
+        self.lbl_current_path.setMinimumWidth(100) # Мінімальна ширина щоб не зник зовсім
         self.lbl_current_path.setStyleSheet("""
-            background: rgba(255,255,255,0.5); 
-            border-radius: 8px; padding: 5px 10px; 
-            color: #4b5563; font-family: consolas; font-size: 13px;
+            QLabel {
+                background: rgba(255, 255, 255, 0.5); 
+                border-radius: 8px; 
+                padding: 8px 12px; 
+                color: #4b5563; 
+                font-family: 'Segoe UI', consolas;
+                font-size: 13px;
+                border: 1px solid rgba(0,0,0,0.05);
+            }
         """)
-        self.lbl_current_path.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-
-        # Кнопка зміни
-        btn_change_path = QtWidgets.QPushButton("Змінити")
-        btn_change_path.setCursor(Qt.PointingHandCursor)
-        btn_change_path.setStyleSheet("""
-            QPushButton {
-                background-color: #8b5cf6; color: white; border-radius: 8px;
-                padding: 6px 15px; font-weight: bold; font-size: 13px; border: none;
+        
+        # 3. Кнопка зміни
+        btn_change = QtWidgets.QPushButton("Змінити")
+        btn_change.setCursor(Qt.PointingHandCursor)
+        btn_change.setFixedWidth(100) # Фіксуємо кнопку, щоб вона не стрибала
+        btn_change.setFixedHeight(34)
+        btn_change.setStyleSheet("""
+            QPushButton { 
+                background-color: #8b5cf6; 
+                color: white; 
+                border-radius: 8px; 
+                font-weight: bold; 
+                border: none; 
             }
             QPushButton:hover { background-color: #7c3aed; }
+            QPushButton:pressed { background-color: #6d28d9; }
         """)
-        btn_change_path.clicked.connect(self.choose_folder_dialog)
+        btn_change.clicked.connect(self.choose_folder_dialog)
 
-        path_row.addWidget(folder_icon)
-        path_row.addWidget(self.lbl_current_path)
-        path_row.addWidget(btn_change_path)
-
-        card_path_layout.addWidget(lbl_path_title)
-        card_path_layout.addLayout(path_row)
+        # Додаємо все в рядок
+        row_path.addWidget(icon_label)
+        row_path.addWidget(self.lbl_current_path, 1) # '1' каже лейблу розтягуватися максимально
+        row_path.addWidget(btn_change)
         
+        card_path_layout.addLayout(row_path)
         layout.addWidget(card_path)
         
-        # Розтяжка знизу
         layout.addStretch()
 
-    def choose_folder_dialog(self):
-        """ Відкриває провідник для вибору папки """
-        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Оберіть папку для скріншотів")
-        if folder:
-            # Оновлюємо текст лейбла на вибраний шлях
-            self.lbl_current_path.setText(folder)
-            # ТУТ МОЖНА ЗБЕРЕГТИ ШЛЯХ У ФАЙЛ НАЛАШТУВАНЬ
-            print(f"Новий шлях збережено: {folder}")
 
 
     def createTitleStatus(self):

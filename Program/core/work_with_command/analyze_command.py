@@ -22,7 +22,9 @@ class AnalyzeCommand(QObject):
                         "system_instruction": PROMPT,
                         "response_mime_type": "application/json"
                     }
-                                             )
+                )
+        self.screenshot = Screenshot()
+        self.user_command = ""
 
 
 
@@ -32,9 +34,10 @@ class AnalyzeCommand(QObject):
         self.send_commandtoai(text)
 
 
-    def send_commandtoai(self, command):
+    def send_commandtoai(self, text):
+        self.user_command = text
 
-        response = self.chat.send_message(f"USER COMMAND: {command}")
+        response = self.chat.send_message(f"USER COMMAND: {self.user_command}")
         print(response.text)
 
         response_json = json.loads(response.text)
@@ -54,10 +57,24 @@ class AnalyzeCommand(QObject):
         if command_found:
             command_id = response_json.get("command_id")
             self.analyze_command_id(command_id)
+
+            new_prompt = self.screenshot.PROMPT
+
+            response = self.chat.send_message(f"NEXT STEP: {new_prompt}")
+            print(response.text)
+
+            response = json.loads(response.text)
+
+            if response.get("all_data") == True:
+                self.screenshot.running_command(response)
+
+            
+
+        
             
     def analyze_command_id(self, command_id):
         match command_id:
             case "screen":
-                print("СКРІН")
+                self.screenshot.create_prompt(self.user_command)
             case "set_timer":
                 print("ТАЙМЕР")
