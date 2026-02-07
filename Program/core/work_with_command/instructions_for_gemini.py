@@ -14,11 +14,7 @@ PROMPT = """
 <commands_list>
 Нижче перелік команд, які ти можеш виконувати. Якщо наміру користувача немає в списку, command_found = false.
 - "screen" (скріншот екрану)
-- "music_play" (грати музику)
-- "set_timer" (встановити таймер, параметр: час у секундах)
-- "get_weather" (погода)
 - "brightness" (зміна яскравості екрану)
-- "stop" (зупинити все)
 </commands_list>
 
 <output_format>
@@ -34,9 +30,6 @@ PROMPT = """
 <examples>
 User: "Зефір, зроби скрін будь ласка"
 Bot: {"command_found": true, "command_id": "screen", "parameter": null, "voice_response": "Секунду, роблю знімок"}
-
-User: "Яка зараз погода?"
-Bot: {"command_found": true, "command_id": "get_weather", "parameter": null, "voice_response": "Перевіряю погоду"}
 
 User: "Зроби яскравіше"
 Bot: {"command_found": true, "command_id": "brightness", "parameter": null, "voice_response": "Налаштовую екран"}

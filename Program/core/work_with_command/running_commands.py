@@ -46,7 +46,7 @@ class Screenshot():
                 {{
                     "monitor": "str" (1/2/3/0) - 0 це всі дисплеї, 1 - перший дисплей,
                     "format": "str", (JPG/PNG)
-                    "path": "str", (Default)
+                    "path": "str", 
                     "voice_response": "Текст озвучки",
                     "all_data": true (чи усі дані зібрані? Якщо так то - true/ ні - false(продовжуємо допитувати дані у користувача))
                 }}
@@ -69,21 +69,15 @@ class Screenshot():
         with mss.mss() as sct:
 
             os.makedirs(save_path, exist_ok=True)
+            
+            monitor = sct.monitors[int(monitor_index)]
+            screenshot = sct.grab(monitor)
 
-            if str(monitor_index) == "0":
-                 monitors_list = sct.monitors[1:]
-            else:
-                 if int(monitor_index) < len(sct.monitors):
-                    monitors_list = [sct.monitors[int(monitor_index)]]
-                 else:
-                    monitors_list = [sct.monitors[1]]
+            filename = f"screenshot_mon_{monitor_index}.{file_format}"
+            output = os.path.join(save_path, filename)
 
-            for i, monitor in enumerate(monitors_list):
-                screenshot = sct.grab(monitor)
-                filename = f"screenshot_{int(time.time())}_{i}.{file_format.lower()}"
-                output = os.path.join(save_path, filename)
-                mss.tools.to_png(screenshot.rgb, screenshot.size, output=output)
-                print(f"Збережено: {output}")
+            mss.tools.to_png(screenshot.rgb, screenshot.size, output=output)
+            print(f"Збережено: {output}")
 
 
 class BrightnessControl():
@@ -125,3 +119,4 @@ class BrightnessControl():
 
             sbc.set_brightness(new_val)
             print(f"Яскравість змінено на {new_val}")
+            

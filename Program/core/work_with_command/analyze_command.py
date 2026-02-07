@@ -7,7 +7,7 @@ import os
 import json
 
 from work_with_command.instructions_for_gemini import PROMPT
-from work_with_command.running_commands import Screenshot, BrightnessControl 
+from work_with_command.running_commands import Screenshot, BrightnessControl
 
 load_dotenv("../secret_data/gemini_api_key.env")
 
@@ -48,7 +48,7 @@ class AnalyzeCommand(QObject):
         command_id = data.get("command_id")
         command_found = data.get("command_found")
 
-        if command_found:
+        if command_found and command_id in self.command_workers:
             worker = self.command_workers[command_id]
             worker.create_prompt(user_text)
             
