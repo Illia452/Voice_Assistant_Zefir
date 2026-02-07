@@ -7,7 +7,7 @@ import os
 import json
 
 from work_with_command.instructions_for_gemini import PROMPT
-from work_with_command.running_commands import Screenshot, BrightnessControl
+from work_with_command.running_commands import Screenshot, BrightnessControl, AppControl
 
 load_dotenv("../secret_data/gemini_api_key.env")
 
@@ -19,7 +19,8 @@ class AnalyzeCommand(QObject):
         
         self.command_workers = {
             "screen": Screenshot(),
-            "brightness": BrightnessControl()
+            "brightness": BrightnessControl(),
+            "open_app": AppControl()
         }
         
     def get_fresh_chat(self):

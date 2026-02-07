@@ -237,11 +237,11 @@ class UI_MainWindow(QMainWindow):
         """
 
         # Створення кнопок меню
-        self.btn_menu_general = QtWidgets.QPushButton("⚡ Загальні")
-        self.btn_menu_voice = QtWidgets.QPushButton("🎙️ Голос")
-        self.btn_menu_commands = QtWidgets.QPushButton("⌨️ Команди") # Новий розділ
-        self.btn_menu_interface = QtWidgets.QPushButton("🎨 Інтерфейс")
-        self.btn_menu_about = QtWidgets.QPushButton("ℹ️ Про систему")
+        self.btn_menu_general = QtWidgets.QPushButton("Загальні")
+        self.btn_menu_voice = QtWidgets.QPushButton("Голос")
+        self.btn_menu_commands = QtWidgets.QPushButton("Команди") # Новий розділ
+        self.btn_menu_interface = QtWidgets.QPushButton("Інтерфейс")
+        self.btn_menu_about = QtWidgets.QPushButton("Про систему")
 
         # Список кнопок для зручного керування
         self.menu_buttons = [
@@ -454,6 +454,17 @@ class UI_MainWindow(QMainWindow):
         layout.setAlignment(Qt.AlignTop)
 
         # --- КАРТКА 1: ФОРМАТ ---
+
+        card_title = self.createGlassCard()
+        card_title_layout = QtWidgets.QVBoxLayout(card_title)
+        card_title_layout.setContentsMargins(20, 20, 20, 20)
+        title_screen = QtWidgets.QLabel("Налашутвання для скріншоту")
+        title_screen.setStyleSheet("font-size: 18px; font-weight: bold; color: #581c87")
+        card_title_layout.addWidget(title_screen)
+
+        layout.addWidget(card_title)
+
+
         card_format = self.createGlassCard()
         card_fmt_layout = QtWidgets.QVBoxLayout(card_format)
         card_fmt_layout.setContentsMargins(20, 20, 20, 20)
@@ -508,7 +519,7 @@ class UI_MainWindow(QMainWindow):
         card_path_layout = QtWidgets.QVBoxLayout(card_path)
         card_path_layout.setContentsMargins(20, 20, 20, 20)
 
-        lbl_path_t = QtWidgets.QLabel("Папка для скріншотів")
+        lbl_path_t = QtWidgets.QLabel("Шлях збереження файлів")
         lbl_path_t.setStyleSheet("font-size: 16px; font-weight: bold; color: #581c87; margin-bottom: 5px;")
         card_path_layout.addWidget(lbl_path_t)
         
@@ -516,10 +527,6 @@ class UI_MainWindow(QMainWindow):
         row_path = QtWidgets.QHBoxLayout()
         row_path.setSpacing(12) # Відступ між іконкою, текстом і кнопкою
 
-        # 1. Іконка папки
-        icon_label = QtWidgets.QLabel("📂")
-        icon_label.setStyleSheet("font-size: 18px;")
-        
         # 2. Лейбл шляху (головний елемент)
         screenshot_cfg = self.settings_data.get("screenshot", {})
         saved_path = screenshot_cfg.get("path", "Оберіть шлях...")
@@ -558,7 +565,6 @@ class UI_MainWindow(QMainWindow):
         btn_change.clicked.connect(self.choose_folder_dialog)
 
         # Додаємо все в рядок
-        row_path.addWidget(icon_label)
         row_path.addWidget(self.lbl_current_path, 1) # '1' каже лейблу розтягуватися максимально
         row_path.addWidget(btn_change)
         

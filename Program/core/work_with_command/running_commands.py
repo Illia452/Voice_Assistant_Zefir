@@ -5,6 +5,7 @@ import mss.tools
 import os
 import time
 import screen_brightness_control as sbc 
+import subprocess
 
 class Screenshot():
     def __init__(self):
@@ -120,3 +121,45 @@ class BrightnessControl():
             sbc.set_brightness(new_val)
             print(f"Яскравість змінено на {new_val}")
             
+
+class AppControl:
+    def __init__(self):
+        self.PROMPT = ""
+        self.apps_list = []
+
+    def get_installed_apps(self):
+        # список імен програм які бачить вінда
+        cmd = 'powershell "Get-StartApps | Select-Object Name | ConvertTo-Json"'
+        result = subprocess.check_output(cmd, shell=True).decode('utf-8', errors='ignore')
+        data = json.loads(result)
+        return [app['Name'] for app in data]
+
+
+    def create_prompt(self, user_command):
+        self.apps_list = self.get_installed_apps()
+        
+        self.PROMPT = f"""
+        ЗАВДАННЯ: Запуск програм у Windows.
+        КОРИСТУВАЧ СКАЗАВ: "{user_command}"
+        СПИСОК ВСТАНОВЛЕНИХ ПРОГРАМ: {", ".join(self.apps_list)}
+
+        Твоя задача:
+        1. Знайди у списку програму, яку хоче відкрити користувач.
+        2. Якщо назва не точна, вибери найбільш схожу (наприклад, "калькулятор" -> "Calculator").
+        
+        Поверни JSON:
+        {{
+            "app_name": "Точна назва зі списку",
+            "voice_response": "Запускаю [назва]",
+            "all_data": true
+        }}
+        """
+
+    def running_command(self, response_json):
+        app_name = response_json.get("app_name")
+        if app_name:
+            # Команда запуску через shell:AppsFolder по імені
+            # Ми використовуємо PowerShell для запуску по імені, це найпростіше
+            cmd = f'powershell "Start-Process shell:AppsFolder\\$((Get-StartApps | Where-Object {{ $_.Name -eq \'{app_name}\' }}).AppID)"'
+            subprocess.Popen(cmd, shell=True)
+            print(f">>> СИСТЕМА: Запущено {app_name}")

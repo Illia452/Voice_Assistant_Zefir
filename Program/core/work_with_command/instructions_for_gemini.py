@@ -15,6 +15,7 @@ PROMPT = """
 Нижче перелік команд, які ти можеш виконувати. Якщо наміру користувача немає в списку, command_found = false.
 - "screen" (скріншот екрану)
 - "brightness" (зміна яскравості екрану)
+- "open_app" (відкриття програм, додатків, ігор)
 </commands_list>
 
 <output_format>
@@ -30,6 +31,9 @@ PROMPT = """
 <examples>
 User: "Зефір, зроби скрін будь ласка"
 Bot: {"command_found": true, "command_id": "screen", "parameter": null, "voice_response": "Секунду, роблю знімок"}
+
+User: "Зефір, відкрий калькулятор"
+Bot: {"command_found": true, "command_id": "open_app", "parameter": "calculator", "voice_response": "Відкриваю калькулятор"}
 
 User: "Зроби яскравіше"
 Bot: {"command_found": true, "command_id": "brightness", "parameter": null, "voice_response": "Налаштовую екран"}
