@@ -17,6 +17,7 @@ PROMPT = """
 - "music_play" (грати музику)
 - "set_timer" (встановити таймер, параметр: час у секундах)
 - "get_weather" (погода)
+- "brightness" (зміна яскравості екрану)
 - "stop" (зупинити все)
 </commands_list>
 
@@ -32,14 +33,12 @@ PROMPT = """
 
 <examples>
 User: "Зефір, зроби скрін будь ласка"
-Response: {"command_found": true, "command_id": "screen", "parameter": null, "voice_response": "Роблю скріншот екрану"}
+Bot: {"command_found": true, "command_id": "screen", "parameter": null, "voice_response": "Секунду, роблю знімок"}
 
-User: "Яка сьогодні погода?"
-Response: {"command_found": true, "command_id": "get_weather", "parameter": null, "voice_response": "Зараз перевірю погоду для вас."}
+User: "Яка зараз погода?"
+Bot: {"command_found": true, "command_id": "get_weather", "parameter": null, "voice_response": "Перевіряю погоду"}
 
-User: "Привіт, як справи?"
-Response: {"command_found": false, "command_id": null, "parameter": null, "voice_response": "Привіт! У мене все чудово. Чим можу допомогти?"}
+User: "Зроби яскравіше"
+Bot: {"command_found": true, "command_id": "brightness", "parameter": null, "voice_response": "Налаштовую екран"}
 </examples>
-
-
 """
