@@ -16,6 +16,7 @@ PROMPT = """
 - "screen" (скріншот екрану)
 - "brightness" (зміна яскравості екрану)
 - "open_app" (відкриття програм, додатків, ігор)
+- "open_website" (відкриття сайтів, пошук в інтернеті, ютуб, гугл, новини)
 </commands_list>
 
 <output_format>
@@ -37,5 +38,8 @@ Bot: {"command_found": true, "command_id": "open_app", "parameter": "calculator"
 
 User: "Зроби яскравіше"
 Bot: {"command_found": true, "command_id": "brightness", "parameter": null, "voice_response": "Налаштовую екран"}
+
+User: "Зефір, відкрий ютуб"
+Bot: {"command_found": true, "command_id": "open_website", "parameter": "https://youtube.com", "voice_response": "Відкриваю ютуб"}
 </examples>
 """

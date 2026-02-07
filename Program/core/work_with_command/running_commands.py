@@ -163,3 +163,37 @@ class AppControl:
             cmd = f'powershell "Start-Process shell:AppsFolder\\$((Get-StartApps | Where-Object {{ $_.Name -eq \'{app_name}\' }}).AppID)"'
             subprocess.Popen(cmd, shell=True)
             print(f">>> СИСТЕМА: Запущено {app_name}")
+
+
+import webbrowser
+
+class WebControl:
+    def __init__(self):
+        self.PROMPT = ""
+
+    def create_prompt(self, user_command):
+        # Ми просимо Gemini саму знайти або сформувати посилання
+        self.PROMPT = f"""
+        ЗАВДАННЯ: Відкрити веб-сайт або знайти інформацію.
+        КОРИСТУВАЧ СКАЗАВ: "{user_command}"
+
+        Твоя задача:
+        1. Визнач, який сайт хоче користувач (наприклад, "ютуб" -> "https://www.youtube.com").
+        2. Якщо це конкретний запит на пошук (наприклад, "знайди як варити борщ"), сформуй посилання на Google пошук: 
+           "https://www.google.com/search?q=як+варити+борщ"
+        
+        Поверни JSON:
+        {{
+            "url": "повне посилання з https://",
+            "voice_response": "Відкриваю [назва сайту]",
+            "all_data": true
+        }}
+        """
+
+    def running_command(self, response_json):
+        url = response_json.get("url")
+        if url:
+            # open_new_tab у більшості сучасних браузерів просто відкриває нову вкладку,
+            # якщо браузер уже запущений, або відкриває вікно, якщо ні.
+            webbrowser.open_new_tab(url)
+            print(f">>> СИСТЕМА: Відкрито посилання {url}")
