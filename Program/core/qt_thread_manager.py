@@ -4,6 +4,7 @@ from wakeword_pipeline.vosk_stt_en import Speech_Recognition
 from gstt_processes.logic_gstt import LogicGSTT
 from gstt_processes.google_stt import GSTT
 from work_with_command.analyze_command import AnalyzeCommand
+from hot_hey_detection import Hot_Key_Detector
 import sys
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QThread
@@ -17,8 +18,12 @@ class Wakeword_Pipeline_Worker(QObject):
         super().__init__()
 
     def run(self):
-        self.speech_recognition = Speech_Recognition()
-        asyncio.run(self.speech_recognition.print_text())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        self.speech_recognition = Speech_Recognition(loop=loop)
+        
+        loop.run_until_complete(self.speech_recognition.print_text())
         self.finished.emit()
 
 
@@ -42,6 +47,18 @@ class Analize_Command_Worker(QObject):
 
     def run(self):
         self.analyze_command = AnalyzeCommand()
+
+
+
+class Hot_Key_Worker(QObject):
+    finished = pyqtSignal()
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        self.hot_key = Hot_Key_Detector()
+        self.hot_key.run()
+
 
 class Thread_Manager():
     def __init__(self):
@@ -71,6 +88,10 @@ class Thread_Manager():
         worker = Analize_Command_Worker()
         self.start_threads("analyze_command", worker, worker.run)
 
+    def create_hot_key(self):
+        worker = Hot_Key_Worker()
+        self.start_threads("hot_key", worker, worker.run)
+
 
 
 if __name__ == "__main__":
@@ -85,5 +106,6 @@ if __name__ == "__main__":
     thread_manager.create_wakeword_pipeline()
     thread_manager.create_googlestt()
     thread_manager.create_analyze_command()
+    thread_manager.create_hot_key()
 
     sys.exit(app.exec_())

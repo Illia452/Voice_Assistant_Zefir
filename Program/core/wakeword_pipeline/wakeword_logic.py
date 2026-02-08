@@ -4,11 +4,12 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from utils.find_silence import detect_silence
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSlot, Qt
 from communications import comm
 
-class WakeWordChecker():
-    def __init__(self):
+class WakeWordChecker(QObject):
+    def __init__(self, loop=None):
+        super().__init__()
         self.uk_list_wakewords = ["заір","зельфія","опір", "зір зефір", "зір зоря", "зегер", "дзеффіреллі",
         "зефір","захід", "з ефір", "ефір", "земфіра", "засіяти", "захир", "захір", "за часів","часів",
         "за шию", "зефірс", "захер", "захур", "заньєр", "за кар'єру", "звір", "зір", "жахів", "вже ефір",
@@ -20,12 +21,14 @@ class WakeWordChecker():
         "they feed", "the field", "the here", "is here", "effective here", "if is few", "it's a few", "see it", 
         "the ship", "last year", "there's a few", "live here", "the sheer", "they fear",
         "the therefore", "the food", "as i fea", "the share", "they feel", "the feel", "the fee"]
+        self.loop = loop
 
         self.speech_waiter = SpeechWaiter()
         self.logic_after_wakeword = LogicAfterWakeWord()
         self.is_wakeword = False
         self.time_wakeword = 0
         comm.reset_wakeword.connect(self.reset_wakeword)
+        comm.detect_hotkey.connect(self.hot_key_detect, Qt.DirectConnection)
 
     async def check_wakeword_status(self, text):
         if self.is_wakeword:
@@ -42,27 +45,36 @@ class WakeWordChecker():
         else:
             await self.search_wakeword(text)
 
+    async def activate_assistant(self):
+        self.time_wakeword = time.time()
+        self.is_wakeword = True
+        self.logic_after_wakeword.actions_after_wakeword()
+        await self.start_timer() 
+
 
     async def search_wakeword(self, text):
         for wakeword in self.en_list_wakewords:
             if wakeword in text:
                 print("Є КЛючове слово")
-
-                self.time_wakeword = time.time()
-                self.is_wakeword = True
-                self.logic_after_wakeword.actions_after_wakeword()
-                #launch gstt
-                await self.start_timer()
+                await self.activate_assistant()
                 break
 
     async def start_timer(self):
         self.timer = asyncio.create_task(
             self.speech_waiter.check_wait_time(self)
             )
-        
+
+    @pyqtSlot() 
     def reset_wakeword(self):
         self.is_wakeword = False
-        print("Ключове слово скинуто")
+
+    @pyqtSlot()
+    def hot_key_detect(self):
+        if not self.is_wakeword:
+            if self.loop and self.loop.is_running():
+                self.loop.call_soon_threadsafe(
+                    lambda: asyncio.create_task(self.activate_assistant())
+                )
         
 class SpeechWaiter():
     async def check_wait_time(self, wakeword_cheker):
@@ -71,7 +83,8 @@ class SpeechWaiter():
             await asyncio.sleep(5)
             print("ЧАС ОЧІКУВАННЯ МОВЛЕННЯ МИНУВ")
             comm.stop_gstt.emit()
-            wakeword_cheker.is_wakeword = False
+            comm.stop_push_window.emit()
+            comm.reset_wakeword.emit()
 
         except asyncio.CancelledError:
             print("ТАйМЕР СКАСОВАНО БО Є МОВЛЕННЯ")

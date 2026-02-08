@@ -9,11 +9,11 @@ import asyncio
 from PyQt5.QtCore import QObject
 
 class Speech_Recognition(QObject):
-    def __init__(self):
+    def __init__(self, loop=None):
         model = Model(r'..\..\models\speech_to_text\vosk-model-small-en-us-0.15')
         self.recognizer = KaldiRecognizer(model, 16000)
 
-        self.wakeword_checker = WakeWordChecker()
+        self.wakeword_checker = WakeWordChecker(loop=loop)
         self.silence_searcher = SilenceSearcher()
         
         cap = pyaudio.PyAudio()

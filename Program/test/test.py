@@ -1,14 +1,11 @@
-import json
-import os, subprocess
+import keyboard
 
+keyboard.add_hotkey('alt+q', lambda: print1())
 
+def print1():
+    print("КЛАВІШІ")
 
+print("Програма запущена. Натисніть Alt+Z (або Esc для виходу)...")
 
-"""Отримує список імен встановлених додатків через PowerShell"""
-# Ця команда повертає список імен програм, які бачить Windows
-cmd = 'powershell "Get-StartApps | Select-Object Name | ConvertTo-Json"'
-
-result = subprocess.check_output(cmd, shell=True).decode('utf-8', errors='ignore')
-data = json.loads(result)
-
-print(data)
+# Утримує програму активною
+keyboard.wait('esc')

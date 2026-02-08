@@ -14,5 +14,6 @@ class Communications(QObject):
     reset_wakeword = pyqtSignal()
     get_data_ui = pyqtSignal(str)
     change_data_ui = pyqtSignal()
+    detect_hotkey = pyqtSignal()
 
 comm = Communications()
