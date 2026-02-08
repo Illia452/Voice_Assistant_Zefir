@@ -5,6 +5,7 @@ from gstt_processes.logic_gstt import LogicGSTT
 from gstt_processes.google_stt import GSTT
 from work_with_command.analyze_command import AnalyzeCommand
 from hot_hey_detection import Hot_Key_Detector
+from gtts_processes.google_tts import Google_TTS_Model
 import sys
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QThread
@@ -60,6 +61,16 @@ class Hot_Key_Worker(QObject):
         self.hot_key.run()
 
 
+
+class Google_TTS_Worker(QObject):
+    finished = pyqtSignal()
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        self.google_tts = Google_TTS_Model()
+
+
 class Thread_Manager():
     def __init__(self):
         self.threads = {}
@@ -92,6 +103,9 @@ class Thread_Manager():
         worker = Hot_Key_Worker()
         self.start_threads("hot_key", worker, worker.run)
 
+    def create_googletts(self):
+        worker = Google_TTS_Worker()
+        self.start_threads("google_tts", worker, worker.run)
 
 
 if __name__ == "__main__":
@@ -107,5 +121,6 @@ if __name__ == "__main__":
     thread_manager.create_googlestt()
     thread_manager.create_analyze_command()
     thread_manager.create_hot_key()
+    thread_manager.create_googletts()
 
     sys.exit(app.exec_())

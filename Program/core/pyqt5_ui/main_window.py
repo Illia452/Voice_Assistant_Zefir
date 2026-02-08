@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import QGraphicsOpacityEffect, QCheckBox
 from PyQt5.QtGui import QColor, QFont, QPixmap, QPainter, QIcon
 import json
 import os
+from communications import comm
 
 
 class ModernRadioButton(QtWidgets.QRadioButton):
@@ -101,7 +102,9 @@ class UI_MainWindow(QMainWindow):
 
         self.setupUI()
 
-
+    def closeEvent(self, event):
+        comm.stop_gtts.emit()
+        event.accept() 
 
 
     def setupUI(self):

@@ -48,7 +48,7 @@ class Screenshot():
                     "monitor": "str" (1/2/3/0) - 0 це всі дисплеї, 1 - перший дисплей,
                     "format": "str", (JPG/PNG)
                     "path": "str", 
-                    "voice_response": "Текст озвучки", (при умові якщо раніше ти вже казав що ти робиш не повторюйся)
+                    "voice_response": "Текст озвучки", 
                     "all_data": true (чи усі дані зібрані? Якщо так то - true/ ні - false(продовжуємо допитувати дані у користувача))
                 }}
                 </output_format>
@@ -108,7 +108,7 @@ class BrightnessControl():
         Поверни JSON:
         {{
             "new_brightness_value": int (0-100),
-            "voice_response": "Текст, наприклад: 'Яскравість 70 відсотків'", (при умові якщо раніше ти вже казав що ти робиш не повторюйся)
+            "voice_response": "Текст, наприклад: 'Яскравість 70 відсотків'",
             "all_data": true
         }}
         </output_format>
@@ -153,7 +153,7 @@ class AppControl:
         {{
             "app_name": "Назва зі списку АБО null, якщо це системний протокол",
             "system_command": "Команда (наприклад: 'start calculator:') АБО null, якщо це звичайна програма",
-            "voice_response": "Запускаю [Назва]", (при умові якщо раніше ти вже казав що ти робиш не повторюйся)
+            "voice_response": "Запускаю [Назва]",
             "all_data": true,
             "is_system": true/false
         }}
@@ -170,7 +170,6 @@ class AppControl:
         """
 
     def running_command(self, response_json):
-        print("ТУТ 2")
         is_system = response_json.get("is_system", False)
         system_cmd = response_json.get("system_command") # Наприклад: "start microsoft.windows.camera:"
         app_name = response_json.get("app_name")
@@ -215,7 +214,7 @@ class WebControl:
         Поверни JSON:
         {{
             "url": "повне посилання з https://",
-            "voice_response": "Відкриваю [назва сайту]",(при умові якщо раніше ти вже казав що ти робиш не повторюйся, залиш просто none)
+            "voice_response": "Відкриваю [назва сайту]",
             "all_data": true
         }}
         """

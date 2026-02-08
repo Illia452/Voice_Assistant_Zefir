@@ -60,13 +60,16 @@ class AnalyzeCommand(QObject):
             
             final_data = json.loads(second_response.text)
 
+            if final_data.get("voice_response"):
+                print("ТУТ 2")
+                comm.text_for_voicework.emit(str(final_data['voice_response']))
+
             if final_data.get("all_data") == True:
                 worker.running_command(final_data)
             
-            # if final_data.get("voice_response"):
-            #     print(f"VOICE: {final_data['voice_response']}")
+
         
         else:
             if data.get("voice_response"):
-                print(f"INFO: {data['voice_response']}")
+                comm.text_for_voicework.emit(str(data['voice_response']))
 
