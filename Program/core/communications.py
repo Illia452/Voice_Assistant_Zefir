@@ -15,5 +15,7 @@ class Communications(QObject):
     get_data_ui = pyqtSignal(str)
     change_data_ui = pyqtSignal()
     detect_hotkey = pyqtSignal()
+    stop_timer = pyqtSignal()
+    focus_on_push = pyqtSignal()
 
 comm = Communications()

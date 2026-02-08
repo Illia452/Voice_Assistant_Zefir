@@ -1,11 +1,9 @@
-import keyboard
+import json
+import subprocess
 
-keyboard.add_hotkey('alt+q', lambda: print1())
 
-def print1():
-    print("КЛАВІШІ")
+cmd = 'powershell "Get-StartApps | Select-Object Name | ConvertTo-Json"'
+result = subprocess.check_output(cmd, shell=True).decode('utf-8', errors='ignore')
+data = json.loads(result)
 
-print("Програма запущена. Натисніть Alt+Z (або Esc для виходу)...")
-
-# Утримує програму активною
-keyboard.wait('esc')
+print(data)

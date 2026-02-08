@@ -214,7 +214,18 @@ class PushWindow(QWidget):
         # padding: 5px 45px 5px 10px; 
         self.inputField.setText("")
         self.inputField.textChanged.connect(self.checkIfScrollNeeded)
+        self.inputField.installEventFilter(self)
         self.inputField.show()
+
+    def eventFilter(self, obj, event):
+        if obj is self.inputField:
+            if event.type() == QtCore.QEvent.FocusIn:
+                self.on_input_focus()
+                
+        return super().eventFilter(obj, event)
+
+    def on_input_focus(self):
+        comm.focus_on_push.emit()
 
     @QtCore.pyqtSlot(str)
     def print_text(self, text):
@@ -231,7 +242,6 @@ class PushWindow(QWidget):
             self.static_yPosition -= 30
             self.static_ySize += 30
             self.set_yPosition_ySize_input_field(self.static_yPosition, self.static_ySize)
-            print("Текст не вміщується — з'явився скрол!")
 
         elif text_height < present_widget_height:
             self.static_yPosition += 30

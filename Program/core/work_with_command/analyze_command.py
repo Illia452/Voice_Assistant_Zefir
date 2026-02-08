@@ -26,7 +26,7 @@ class AnalyzeCommand(QObject):
         
     def get_fresh_chat(self):
         return self.client.chats.create(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             config={
                 "system_instruction": PROMPT,
                 "response_mime_type": "application/json"
@@ -46,6 +46,7 @@ class AnalyzeCommand(QObject):
         
         response = chat.send_message(f"USER COMMAND: {user_text}")
         data = json.loads(response.text)
+        print(response.text)
         
         command_id = data.get("command_id")
         command_found = data.get("command_found")
@@ -55,6 +56,7 @@ class AnalyzeCommand(QObject):
             worker.create_prompt(user_text)
             
             second_response = chat.send_message(f"NEXT STEP: {worker.PROMPT}")
+            print(second_response.text)
             
             final_data = json.loads(second_response.text)
 

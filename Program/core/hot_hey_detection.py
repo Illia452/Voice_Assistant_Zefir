@@ -10,5 +10,5 @@ class Hot_Key_Detector(QObject):
         keyboard.add_hotkey('alt+z', lambda: self.start())
 
     def start(self):
-        print("клааааааааа")
+
         comm.detect_hotkey.emit()

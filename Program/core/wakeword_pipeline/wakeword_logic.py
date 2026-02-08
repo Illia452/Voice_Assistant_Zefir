@@ -28,6 +28,7 @@ class WakeWordChecker(QObject):
         self.is_wakeword = False
         self.time_wakeword = 0
         comm.reset_wakeword.connect(self.reset_wakeword)
+        comm.stop_timer.connect(self.reset_timer)
         comm.detect_hotkey.connect(self.hot_key_detect, Qt.DirectConnection)
 
     async def check_wakeword_status(self, text):
@@ -38,7 +39,7 @@ class WakeWordChecker(QObject):
             if cooldown < 1.25:
                 return
             else:
-                self.timer.cancel()
+                comm.stop_timer.emit()
                 # listen command
                 # search silence 
                 comm.start_search_silence.emit()
@@ -63,6 +64,10 @@ class WakeWordChecker(QObject):
         self.timer = asyncio.create_task(
             self.speech_waiter.check_wait_time(self)
             )
+        
+    @pyqtSlot()    
+    def reset_timer(self):
+        self.timer.cancel()
 
     @pyqtSlot() 
     def reset_wakeword(self):
@@ -76,18 +81,35 @@ class WakeWordChecker(QObject):
                     lambda: asyncio.create_task(self.activate_assistant())
                 )
         
-class SpeechWaiter():
+class SpeechWaiter(QObject):
+    def __init__(self):
+        super().__init__()
+
+        self.focus_on_push = False
+
+        comm.focus_on_push.connect(self.focus_true, Qt.DirectConnection)
+
+
     async def check_wait_time(self, wakeword_cheker):
 
         try:
             await asyncio.sleep(5)
             print("ЧАС ОЧІКУВАННЯ МОВЛЕННЯ МИНУВ")
             comm.stop_gstt.emit()
-            comm.stop_push_window.emit()
             comm.reset_wakeword.emit()
+
+            if not self.focus_on_push:
+                comm.stop_push_window.emit()
 
         except asyncio.CancelledError:
             print("ТАйМЕР СКАСОВАНО БО Є МОВЛЕННЯ")
+
+    def focus_true(self):
+        self.focus_on_push = True
+
+        comm.stop_gstt.emit()
+        comm.reset_wakeword.emit()
+
 
 
 

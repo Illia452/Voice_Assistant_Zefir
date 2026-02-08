@@ -48,7 +48,7 @@ class Screenshot():
                     "monitor": "str" (1/2/3/0) - 0 це всі дисплеї, 1 - перший дисплей,
                     "format": "str", (JPG/PNG)
                     "path": "str", 
-                    "voice_response": "Текст озвучки",
+                    "voice_response": "Текст озвучки", (при умові якщо раніше ти вже казав що ти робиш не повторюйся)
                     "all_data": true (чи усі дані зібрані? Якщо так то - true/ ні - false(продовжуємо допитувати дані у користувача))
                 }}
                 </output_format>
@@ -108,7 +108,7 @@ class BrightnessControl():
         Поверни JSON:
         {{
             "new_brightness_value": int (0-100),
-            "voice_response": "Текст, наприклад: 'Яскравість 70 відсотків'",
+            "voice_response": "Текст, наприклад: 'Яскравість 70 відсотків'", (при умові якщо раніше ти вже казав що ти робиш не повторюйся)
             "all_data": true
         }}
         </output_format>
@@ -141,29 +141,59 @@ class AppControl:
         self.PROMPT = f"""
         ЗАВДАННЯ: Запуск програм у Windows.
         КОРИСТУВАЧ СКАЗАВ: "{user_command}"
-        СПИСОК ВСТАНОВЛЕНИХ ПРОГРАМ: {", ".join(self.apps_list)}
+        СПИСОК ВСТАНОВЛЕНИХ ПРОГРАМ (EXE/Ярлики): {", ".join(self.apps_list)}
 
         Твоя задача:
-        1. Знайди у списку програму, яку хоче відкрити користувач.
-        2. Якщо назва не точна, вибери найбільш схожу (наприклад, "калькулятор" -> "Calculator").
-        
-        Поверни JSON:
+        1. Визнач, чи хоче користувач відкрити системний додаток Windows (UWP) чи звичайну програму зі списку.
+        2. Якщо додаток системний (Калькулятор, Налаштування, Камера, Календар, Фото тощо), згенеруй відповідну команду 'start [протокол]:'.
+        3. Якщо додаток є у списку встановлених програм, вибери точну назву.
+        4. Якщо назва не точна, вибери найбільш схожу.
+
+        Поверни ТІЛЬКИ JSON:
         {{
-            "app_name": "Точна назва зі списку",
-            "voice_response": "Запускаю [назва]",
-            "all_data": true
+            "app_name": "Назва зі списку АБО null, якщо це системний протокол",
+            "system_command": "Команда (наприклад: 'start calculator:') АБО null, якщо це звичайна програма",
+            "voice_response": "Запускаю [Назва]", (при умові якщо раніше ти вже казав що ти робиш не повторюйся)
+            "all_data": true,
+            "is_system": true/false
         }}
+
+        ПІДКАЗКА ПО СИСТЕМНИМ ПРОТОКОЛАМ:
+        - Калькулятор: start calculator:
+        - Налаштування/Параметри: start ms-settings:
+        - Камера: start microsoft.windows.camera:
+        - Календар: start outlookcal:
+        - Магазин (Store): start ms-windows-store:
+        - Фото: start ms-photos:
+        - Пошта: start mailto:
+        - Браузер Edge: start microsoft-edge:
         """
 
     def running_command(self, response_json):
+        print("ТУТ 2")
+        is_system = response_json.get("is_system", False)
+        system_cmd = response_json.get("system_command") # Наприклад: "start microsoft.windows.camera:"
         app_name = response_json.get("app_name")
+
+        # 1. СИСТЕМНИЙ ЗАПУСК
+        if is_system and system_cmd:
+            try:
+                # Очищаємо команду від слова 'start ', залишаючи тільки протокол
+                # Бо os.startfile не потребує 'start'
+                protocol = system_cmd.replace("start ", "").strip()
+                print(f">>> Спроба відкрити протокол: {protocol}")
+                os.startfile(protocol) 
+                return
+            except Exception as e:
+                print(f"Помилка os.startfile: {e}. Пробую через cmd...")
+                subprocess.Popen(f'cmd /c "{system_cmd}"', shell=True)
+                return
+
+        # 2. ЗАПУСК ЗВИЧАЙНОЇ ПРОГРАМИ (Твій метод)
         if app_name:
-            # Команда запуску через shell:AppsFolder по імені
-            # Ми використовуємо PowerShell для запуску по імені, це найпростіше
+            print(f">>> Шукаю AppID для: {app_name}")
             cmd = f'powershell "Start-Process shell:AppsFolder\\$((Get-StartApps | Where-Object {{ $_.Name -eq \'{app_name}\' }}).AppID)"'
             subprocess.Popen(cmd, shell=True)
-            print(f">>> СИСТЕМА: Запущено {app_name}")
-
 
 import webbrowser
 
@@ -185,7 +215,7 @@ class WebControl:
         Поверни JSON:
         {{
             "url": "повне посилання з https://",
-            "voice_response": "Відкриваю [назва сайту]",
+            "voice_response": "Відкриваю [назва сайту]",(при умові якщо раніше ти вже казав що ти робиш не повторюйся, залиш просто none)
             "all_data": true
         }}
         """
