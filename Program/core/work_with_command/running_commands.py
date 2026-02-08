@@ -174,21 +174,14 @@ class AppControl:
         system_cmd = response_json.get("system_command") # Наприклад: "start microsoft.windows.camera:"
         app_name = response_json.get("app_name")
 
-        # 1. СИСТЕМНИЙ ЗАПУСК
-        if is_system and system_cmd:
-            try:
-                # Очищаємо команду від слова 'start ', залишаючи тільки протокол
-                # Бо os.startfile не потребує 'start'
-                protocol = system_cmd.replace("start ", "").strip()
-                print(f">>> Спроба відкрити протокол: {protocol}")
-                os.startfile(protocol) 
-                return
-            except Exception as e:
-                print(f"Помилка os.startfile: {e}. Пробую через cmd...")
-                subprocess.Popen(f'cmd /c "{system_cmd}"', shell=True)
-                return
 
-        # 2. ЗАПУСК ЗВИЧАЙНОЇ ПРОГРАМИ (Твій метод)
+        if is_system and system_cmd:
+            protocol = system_cmd.replace("start ", "").strip()
+            print(f">>> Спроба відкрити протокол: {protocol}")
+            os.startfile(protocol) 
+            return
+
+
         if app_name:
             print(f">>> Шукаю AppID для: {app_name}")
             cmd = f'powershell "Start-Process shell:AppsFolder\\$((Get-StartApps | Where-Object {{ $_.Name -eq \'{app_name}\' }}).AppID)"'
@@ -201,7 +194,6 @@ class WebControl:
         self.PROMPT = ""
 
     def create_prompt(self, user_command):
-        # Ми просимо Gemini саму знайти або сформувати посилання
         self.PROMPT = f"""
         ЗАВДАННЯ: Відкрити веб-сайт або знайти інформацію.
         КОРИСТУВАЧ СКАЗАВ: "{user_command}"
@@ -222,7 +214,5 @@ class WebControl:
     def running_command(self, response_json):
         url = response_json.get("url")
         if url:
-            # open_new_tab у більшості сучасних браузерів просто відкриває нову вкладку,
-            # якщо браузер уже запущений, або відкриває вікно, якщо ні.
             webbrowser.open_new_tab(url)
             print(f">>> СИСТЕМА: Відкрито посилання {url}")

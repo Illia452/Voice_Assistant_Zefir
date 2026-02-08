@@ -6,6 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 from utils.find_silence import detect_silence
 from PyQt5.QtCore import QObject, pyqtSlot, Qt
 from communications import comm
+import json
 
 class WakeWordChecker(QObject):
     def __init__(self, loop=None):
@@ -31,6 +32,11 @@ class WakeWordChecker(QObject):
         comm.stop_timer.connect(self.reset_timer)
         comm.detect_hotkey.connect(self.hot_key_detect, Qt.DirectConnection)
 
+        with open('pyqt5_ui/settings_ui.json', 'r', encoding='utf-8') as f:
+            self.data = json.load(f)
+        self.method_activation = self.data.get("general", {}).get("assis_activate")
+        
+
     async def check_wakeword_status(self, text):
         if self.is_wakeword:
 
@@ -40,13 +46,14 @@ class WakeWordChecker(QObject):
                 return
             else:
                 comm.stop_timer.emit()
-                # listen command
-                # search silence 
+
                 comm.start_search_silence.emit()
         else:
-            await self.search_wakeword(text)
+            await self.check_settings_ui(text)
+
 
     async def activate_assistant(self):
+        comm.wake_up_feedback.emit()
         self.time_wakeword = time.time()
         self.is_wakeword = True
         self.logic_after_wakeword.actions_after_wakeword()
@@ -64,6 +71,19 @@ class WakeWordChecker(QObject):
         self.timer = asyncio.create_task(
             self.speech_waiter.check_wait_time(self)
             )
+        
+    async def check_settings_ui(self, text):
+        await self.check_ui_data()
+        await self.get_data()
+        if self.method_activation == "VOICE" or "BOTH":
+            await self.search_wakeword(text)
+        
+    async def get_data(self):
+        self.method_activation = self.data.get("general", {}).get("assis_activate")
+
+    async def check_ui_data(self):
+        with open('pyqt5_ui/settings_ui.json', 'r', encoding='utf-8') as f:
+            self.data = json.load(f)
         
     @pyqtSlot()    
     def reset_timer(self):

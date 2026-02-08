@@ -343,37 +343,82 @@ class UI_MainWindow(QMainWindow):
         active_btn.setChecked(True)
 
     def setup_general_page(self):
-        """ Наповнення сторінки 'Загальні' """
+        """ Наповнення сторінки 'Загальні' з вибором методу активації """
+        # Очищення старого лейауту (якщо був)
+        if self.page_general.layout():
+            QtWidgets.QWidget().setLayout(self.page_general.layout())
+
         layout = QtWidgets.QVBoxLayout(self.page_general)
         layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(20)
-        layout.setAlignment(Qt.AlignTop) # Щоб елементи не розтягувались по вертикалі
+        layout.setAlignment(Qt.AlignTop)
 
-        # Картка 1 (Приклад)
-        card = QtWidgets.QFrame()
-        card.setMinimumHeight(80)
-        card.setStyleSheet("background: rgba(255,255,255,0.6); border-radius: 15px; border: 1px solid white;")
+        # --- КАРТКА: МЕТОД АКТИВАЦІЇ ---
+        card_act = self.createGlassCard()
+        card_act_layout = QtWidgets.QVBoxLayout(card_act)
+        card_act_layout.setContentsMargins(20, 20, 20, 20)
         
-        row = QtWidgets.QHBoxLayout(card)
-        row.setContentsMargins(20, 0, 20, 0)
+        lbl_act_title = QtWidgets.QLabel("Активація помічника")
+        lbl_act_title.setStyleSheet("font-size: 18px; font-weight: bold; color: #581c87;")
         
-        text_layout = QtWidgets.QVBoxLayout()
-        lbl_title = QtWidgets.QLabel("Запускати разом з Windows")
-        lbl_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #4B5563; border: none;")
-        lbl_desc = QtWidgets.QLabel("Автоматичний старт при вході")
-        lbl_desc.setStyleSheet("font-size: 12px; color: #9CA3AF; border: none;")
-        text_layout.addWidget(lbl_title)
-        text_layout.addWidget(lbl_desc)
+        lbl_act_desc = QtWidgets.QLabel("Оберіть від чого асистент повинен прокидатися для ваших запитів")
+        lbl_act_desc.setStyleSheet("font-size: 13px; color: #9CA3AF; border: none; margin-bottom: 10px;")
         
-        row.addLayout(text_layout)
-        row.addStretch()
-        row.addWidget(GlassToggle(card)) # тумблер
+        card_act_layout.addWidget(lbl_act_title)
+        card_act_layout.addWidget(lbl_act_desc)
 
-        layout.addWidget(card)
-        # Тут можна додати інші картки для цієї сторінки...
+        # Створення радіо-кнопок
+        self.radio_keys = ModernRadioButton("Гарячі клавіші (Alt + Z)")
+        self.radio_voice = ModernRadioButton("Ключове слово (Зефір)")
+        self.radio_both = ModernRadioButton("Комбінований (Голос + Клавіші)")
+
+        # Групування
+        self.act_group = QtWidgets.QButtonGroup(self)
+        self.act_group.addButton(self.radio_keys)
+        self.act_group.addButton(self.radio_voice)
+        self.act_group.addButton(self.radio_both)
+
+        # Відновлення стану з JSON
+        current_act = self.settings_data.get("general", {}).get("assis_activate", "BOTH")
+        if current_act == "KEYS": self.radio_keys.setChecked(True)
+        elif current_act == "VOICE": self.radio_voice.setChecked(True)
+        else: self.radio_both.setChecked(True)
+
+        # Підключення збереження
+        self.radio_keys.clicked.connect(lambda: self.save_setting(["general", "assis_activate"], "KEYS"))
+        self.radio_voice.clicked.connect(lambda: self.save_setting(["general", "assis_activate"], "VOICE"))
+        self.radio_both.clicked.connect(lambda: self.save_setting(["general", "assis_activate"], "BOTH"))
+
+        # Додавання у лейаут картки
+        card_act_layout.addWidget(self.radio_keys)
+        card_act_layout.addWidget(self.radio_voice)
+        card_act_layout.addWidget(self.radio_both)
+
+        layout.addWidget(card_act)
+
+        # # --- КАРТКА 2: АВТОЗАПУСК (ЗАГОТОВКА) ---
+        # card_boot = self.createGlassCard()
+        # card_boot.setFixedHeight(80)
+        # boot_row = QtWidgets.QHBoxLayout(card_boot)
+        # boot_row.setContentsMargins(20, 0, 20, 0)
+        
+        # boot_text_layout = QtWidgets.QVBoxLayout()
+        # lbl_boot_t = QtWidgets.QLabel("Запускати разом з Windows")
+        # lbl_boot_t.setStyleSheet("font-size: 16px; font-weight: bold; color: #4B5563; border: none;")
+        # lbl_boot_d = QtWidgets.QLabel("Автоматичний старт при вході в систему")
+        # lbl_boot_d.setStyleSheet("font-size: 12px; color: #9CA3AF; border: none;")
+        # boot_text_layout.addWidget(lbl_boot_t)
+        # boot_text_layout.addWidget(lbl_boot_d)
+        
+        # boot_row.addLayout(boot_text_layout)
+        # boot_row.addStretch()
+        # boot_row.addWidget(GlassToggle(card_boot))
+
+        # layout.addWidget(card_boot)
+        # layout.addStretch()
 
     def setup_placeholder_page(self, page_widget, text):
-        """ Тимчасовий метод для пустих сторінок, щоб ти бачив, що вони працюють """
+        """ Тимчасовий метод для пустих сторінок """
         layout = QtWidgets.QVBoxLayout(page_widget)
         lbl = QtWidgets.QLabel(text)
         lbl.setAlignment(Qt.AlignCenter)
@@ -393,18 +438,32 @@ class UI_MainWindow(QMainWindow):
     # --- НОВА ЛОГІКА РОБОТИ З НАЛАШТУВАННЯМИ ---
 
     def load_settings_data(self):
-        # Шлях до файлу (переконайся, що папка pyqt5_ui існує!)
         self.settings_file = "pyqt5_ui/settings_ui.json"
         
-        # 1. Базова структура за замовчуванням (обов'язково вкладена)
+        # Базова структура (тепер включає general)
         default_path = os.path.join(os.path.expanduser("~"), "Pictures", "Screenshots")
         self.settings_data = {
             "screenshot": {
                 "format": "PNG",
                 "path": default_path
+            },
+            "general": {
+                "assis_activate": "BOTH" # За замовчуванням обидва методи
             }
         }
 
+        if os.path.exists(self.settings_file):
+            try:
+                with open(self.settings_file, "r", encoding="utf-8") as f:
+                    content = f.read().strip()
+                    if content:
+                        loaded_data = json.loads(content)
+                        # Злиття даних для всіх секцій
+                        for key in ["screenshot", "general"]:
+                            if key in loaded_data:
+                                self.settings_data[key].update(loaded_data[key])
+            except Exception as e:
+                print(f"Помилка читання JSON: {e}")
         # 2. Спроба зчитати файл
         if os.path.exists(self.settings_file):
             try:

@@ -4,6 +4,7 @@ from google.cloud import texttospeech
 from dotenv import load_dotenv
 from PyQt5.QtCore import QObject, pyqtSlot
 from communications import comm 
+import random
 
 class Google_TTS_Model(QObject):
     def __init__(self):
@@ -11,6 +12,7 @@ class Google_TTS_Model(QObject):
 
         comm.text_for_voicework.connect(self.get_text)
         comm.stop_gtts.connect(self.close_all)
+        comm.wake_up_feedback.connect(self.get_activation_phrase)
 
         load_dotenv("../secret_data/apikey_tts.env")
         api_key = os.getenv("API_KEY")
@@ -30,6 +32,24 @@ class Google_TTS_Model(QObject):
                 language_code="uk-UA",
             )
         )
+
+
+    @pyqtSlot()
+    def get_activation_phrase(self):
+        phrases = [
+            "Слухаю вас.",
+            "Я на зв’язку.",
+            "До ваших послуг.",
+            "Так?",
+            "Кажіть.",
+            "Тут.",
+            "Слухаю.",
+            "Слухаю уважно.",
+            "Чим можу допомогти?"
+        ]
+        text = random.choice(phrases)
+        self.get_text(text)
+
 
     @pyqtSlot(str)
     def get_text(self, text):

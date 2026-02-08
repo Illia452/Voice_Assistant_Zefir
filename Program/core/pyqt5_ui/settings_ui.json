@@ -2,5 +2,8 @@
     "screenshot": {
         "format": "JPG",
         "path": "C:/Users/Home/Desktop"
+    },
+    "general": {
+        "assis_activate": "KEYS"
     }
 }

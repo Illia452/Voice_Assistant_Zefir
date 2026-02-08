@@ -19,5 +19,6 @@ class Communications(QObject):
     focus_on_push = pyqtSignal()
     text_for_voicework = pyqtSignal(str)
     stop_gtts = pyqtSignal()
+    wake_up_feedback = pyqtSignal()
 
 comm = Communications()
