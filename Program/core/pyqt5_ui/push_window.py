@@ -41,6 +41,7 @@ class PushWindow(QWidget):
     @pyqtSlot()
     def show_window(self):
         self.animate_show_push()
+        self.listen_command_ON()
 
 
     def setupUI(self):
@@ -84,6 +85,7 @@ class PushWindow(QWidget):
 
 
     def clickButton_close(self):
+        comm.reset_focus.emit()
         self.animate_hide_push()
         QtCore.QTimer.singleShot(200, self.close_window)
 
@@ -169,7 +171,8 @@ class PushWindow(QWidget):
 
 
     def clickButton_Micro(self):
-        pass
+        comm.activate_assistant.emit()
+        self.listen_command_ON()
 
 
     def createButton_Send(self):
@@ -190,7 +193,11 @@ class PushWindow(QWidget):
 
 
     def clickButton_Send(self):
-        pass
+        current_text = self.inputField.toPlainText()
+        text = current_text.strip()
+        comm.final_command.emit(text)
+        comm.stop_push_window.emit()
+
 
 
     def createInputField(self):
@@ -226,6 +233,7 @@ class PushWindow(QWidget):
 
     def on_input_focus(self):
         comm.focus_on_push.emit()
+        self.listen_command_OFF()
 
     @QtCore.pyqtSlot(str)
     def print_text(self, text):

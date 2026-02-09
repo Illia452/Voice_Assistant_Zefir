@@ -17,8 +17,10 @@ class Communications(QObject):
     detect_hotkey = pyqtSignal()
     stop_timer = pyqtSignal()
     focus_on_push = pyqtSignal()
+    reset_focus = pyqtSignal()
     text_for_voicework = pyqtSignal(str)
     stop_gtts = pyqtSignal()
     wake_up_feedback = pyqtSignal()
+    activate_assistant = pyqtSignal()
 
 comm = Communications()

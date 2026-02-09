@@ -15,7 +15,7 @@ class Hot_Key_Detector(QObject):
     def start(self):
         self.check_ui_data()
         self.get_data()
-        if self.method_activation == "BOTH" or "KEYS":
+        if self.method_activation in ["BOTH", "KEYS"]:
             comm.detect_hotkey.emit()
 
     def get_data(self):

@@ -25,12 +25,17 @@ class WakeWordChecker(QObject):
         self.loop = loop
 
         self.speech_waiter = SpeechWaiter()
-        self.logic_after_wakeword = LogicAfterWakeWord()
         self.is_wakeword = False
         self.time_wakeword = 0
         comm.reset_wakeword.connect(self.reset_wakeword)
         comm.stop_timer.connect(self.reset_timer)
         comm.detect_hotkey.connect(self.hot_key_detect, Qt.DirectConnection)
+
+        self.focus_on_push = False
+        comm.focus_on_push.connect(self.focus_true, Qt.DirectConnection)
+        comm.reset_focus.connect(self.focus_false, Qt.DirectConnection)
+
+        comm.activate_assistant.connect(self.assistant_on, Qt.DirectConnection)
 
         with open('pyqt5_ui/settings_ui.json', 'r', encoding='utf-8') as f:
             self.data = json.load(f)
@@ -38,6 +43,8 @@ class WakeWordChecker(QObject):
         
 
     async def check_wakeword_status(self, text):
+        if self.focus_on_push == True:
+            return
         if self.is_wakeword:
 
             cooldown = time.time() - self.time_wakeword
@@ -53,10 +60,12 @@ class WakeWordChecker(QObject):
 
 
     async def activate_assistant(self):
-        comm.wake_up_feedback.emit()
+        if not self.focus_on_push:
+            comm.wake_up_feedback.emit()
+            comm.start_push_window.emit()
         self.time_wakeword = time.time()
         self.is_wakeword = True
-        self.logic_after_wakeword.actions_after_wakeword()
+                
         await self.start_timer() 
 
 
@@ -64,7 +73,7 @@ class WakeWordChecker(QObject):
         for wakeword in self.en_list_wakewords:
             if wakeword in text:
                 print("Є КЛючове слово")
-                await self.activate_assistant()
+                comm.activate_assistant.emit()
                 break
 
     async def start_timer(self):
@@ -75,7 +84,7 @@ class WakeWordChecker(QObject):
     async def check_settings_ui(self, text):
         await self.check_ui_data()
         await self.get_data()
-        if self.method_activation == "VOICE" or "BOTH":
+        if self.method_activation in ["VOICE", "BOTH"]:
             await self.search_wakeword(text)
         
     async def get_data(self):
@@ -100,46 +109,50 @@ class WakeWordChecker(QObject):
                 self.loop.call_soon_threadsafe(
                     lambda: asyncio.create_task(self.activate_assistant())
                 )
+
+    @pyqtSlot()
+    def focus_true(self):
+        if not self.focus_on_push:
+            self.focus_on_push = True
+            comm.stop_gstt.emit()
+            comm.reset_wakeword.emit()
+
+    @pyqtSlot()
+    def focus_false(self):
+        self.focus_on_push = False
+
+    @pyqtSlot()
+    def assistant_on(self):
+        if not self.is_wakeword:
+            if self.loop and self.loop.is_running():
+                self.loop.call_soon_threadsafe(
+                    lambda: asyncio.create_task(self.activate_assistant())
+                )
+
+
         
 class SpeechWaiter(QObject):
     def __init__(self):
         super().__init__()
 
-        self.focus_on_push = False
 
-        comm.focus_on_push.connect(self.focus_true, Qt.DirectConnection)
-
-
-    async def check_wait_time(self, wakeword_cheker):
+    async def check_wait_time(self, wakeword_logic):
 
         try:
             await asyncio.sleep(5)
             print("ЧАС ОЧІКУВАННЯ МОВЛЕННЯ МИНУВ")
             comm.stop_gstt.emit()
             comm.reset_wakeword.emit()
-
-            if not self.focus_on_push:
+            if wakeword_logic.focus_on_push == False:
                 comm.stop_push_window.emit()
 
         except asyncio.CancelledError:
             print("ТАйМЕР СКАСОВАНО БО Є МОВЛЕННЯ")
-
-    def focus_true(self):
-        self.focus_on_push = True
-
-        comm.stop_gstt.emit()
-        comm.reset_wakeword.emit()
+            
 
 
 
 
-class LogicAfterWakeWord(QObject):
-    def __init__(self):
-        super().__init__()
-
-    def actions_after_wakeword(self):
-        comm.start_push_window.emit()
-        comm.start_gstt.emit()
 
 
 

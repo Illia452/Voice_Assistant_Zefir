@@ -15,4 +15,7 @@ class LogicGSTT(QObject):
 
     def stop_process(self):
         self.active_is = False
-        self.stream_audio._buff.put(None)
+        if self.stream_audio is None:
+            return
+        else:
+            self.stream_audio._buff.put(None)

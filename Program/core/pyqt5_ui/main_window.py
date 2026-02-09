@@ -38,16 +38,16 @@ class ModernRadioButton(QtWidgets.QRadioButton):
 class GlassToggle(QCheckBox):
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Трохи зменшені розміри: ширина 40, висота 22
         self.setFixedSize(40, 22)
         self.setCursor(Qt.PointingHandCursor)
         
-        # Початкова позиція кульки (тепер відступ 2 пікселі)
         self._circle_position = 2
         
         self.animation = QPropertyAnimation(self, b"circle_position")
-        self.animation.setDuration(350) # Лишаємо плавність
+        self.animation.setDuration(350)
         self.animation.setEasingCurve(QEasingCurve.InOutQuint)
+
+        self.toggled.connect(self.start_transition)
 
     @pyqtProperty(float)
     def circle_position(self):
@@ -58,39 +58,35 @@ class GlassToggle(QCheckBox):
         self._circle_position = pos
         self.update()
 
+    def start_transition(self, is_checked):
+        """Цей метод відповідає за рух кульки"""
+        self.animation.stop()
+        # 2 — старт, 20 — кінець (40 ширина - 18 кулька - 2 відступ)
+        end_value = 20 if is_checked else 2
+        self.animation.setEndValue(float(end_value))
+        self.animation.start()
+
     def paintEvent(self, e):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         
         is_checked = self.isChecked()
-        # Кольори: насичений фіолетовий для "ON", легке скло для "OFF"
+        # Використовуємо _circle_position для плавного переходу кольору або просто міняємо
         bg_color = QColor(147, 51, 234, 230) if is_checked else QColor("#EDE9FE")
         
         p.setBrush(bg_color)
         p.setPen(Qt.NoPen)
-        # Малюємо фон (капсулу)
         p.drawRoundedRect(0, 0, self.width(), self.height(), 11, 11)
         
-        # Малюємо кульку (зменшили до 18x18, щоб вона була акуратною)
         p.setBrush(QColor("white"))
+        # Малюємо кульку за її поточними координатами з анімації
         p.drawEllipse(int(self._circle_position), 2, 18, 18)
     
     def hitButton(self, pos: QPoint):
-        # Повертаємо True, якщо клік потрапив у будь-яку точку віджета
         return self.rect().contains(pos)
 
-    def nextCheckState(self):
-        super().nextCheckState()
-        # Нові межі для анімації кульки:
-        # 2 — початкова позиція (зліва)
-        # 20 — кінцева позиція (40 ширина - 18 кулька - 2 відступ)
-        start = self._circle_position
-        end = 20 if self.isChecked() else 2
-        
-        self.animation.stop()
-        self.animation.setStartValue(start)
-        self.animation.setEndValue(end)
-        self.animation.start()
+    # nextCheckState тепер можна не чіпати, або просто залишити порожнім super()
+    # оскільки toggled.connect зробить всю роботу за нас
 
 class UI_MainWindow(QMainWindow):
 
@@ -282,7 +278,7 @@ class UI_MainWindow(QMainWindow):
 
         # Стор. 1: Голос (Пуста заготовка)
         self.page_voice = QtWidgets.QWidget()
-        self.setup_placeholder_page(self.page_voice, "Налаштування Голосу та Мікрофону")
+        self.setup_voice_page()
         self.content_stack.addWidget(self.page_voice)
 
         # Стор. 2: Команди (Пуста заготовка)
@@ -317,6 +313,61 @@ class UI_MainWindow(QMainWindow):
         body_layout.addWidget(self.content_stack)
         self.layout_full.addWidget(self.body_container)
 
+    def setup_voice_page(self):
+        """ Наповнення сторінки 'Голос' """
+        if self.page_voice.layout():
+            QtWidgets.QWidget().setLayout(self.page_voice.layout())
+
+        layout = QtWidgets.QVBoxLayout(self.page_voice)
+        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(20)
+        layout.setAlignment(Qt.AlignTop)
+
+        # КАРТКА ГОЛОСОВОГО СУПРОВОДУ
+        card_voice = self.createGlassCard()
+        card_voice.setFixedHeight(100)
+        voice_row = QtWidgets.QHBoxLayout(card_voice)
+        voice_row.setContentsMargins(20, 0, 20, 0)
+        
+        text_v_layout = QtWidgets.QVBoxLayout()
+        lbl_v_title = QtWidgets.QLabel("Голосовий супровід")
+        lbl_v_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #581c87; border: none;")
+        lbl_v_desc = QtWidgets.QLabel("Асистент буде озвучувати свої дії та відповіді")
+        lbl_v_desc.setStyleSheet("font-size: 12px; color: #9CA3AF; border: none;")
+        text_v_layout.addWidget(lbl_v_title)
+        text_v_layout.addWidget(lbl_v_desc)
+        
+        voice_row.addLayout(text_v_layout)
+        voice_row.addStretch()
+
+        self.toggle_voice_main = GlassToggle(card_voice)
+        # Стан з JSON
+        self.toggle_voice_main.setChecked(self.settings_data.get("voice", {}).get("voice_support", True))
+        # Сигнал
+        self.toggle_voice_main.toggled.connect(lambda checked: self.sync_voice_support(checked, "main"))
+        
+        voice_row.addWidget(self.toggle_voice_main)
+        layout.addWidget(card_voice)
+        layout.addStretch()
+
+    def sync_voice_support(self, state, source):
+        """ Синхронізація перемикачів та запис у JSON """
+        # Викликаємо save_setting з правильними аргументами:
+        # 1. ["voice", "voice_support"] - це список ключів у JSON
+        # 2. state - це True або False від тумблера
+        self.save_setting(["voice", "voice_support"], state)
+
+        # Синхронізуємо візуальний стан тумблерів
+        if source == "main":
+            # Якщо змінили в розділі "Голос", штовхаємо тумблер у швидких налаштуваннях
+            if hasattr(self, 'toggle_voice_quick'):
+                if self.toggle_voice_quick.isChecked() != state:
+                    self.toggle_voice_quick.setChecked(state)
+        else:
+            # Якщо змінили у швидких, штовхаємо тумблер у розділі "Голос"
+            if hasattr(self, 'toggle_voice_main'):
+                if self.toggle_voice_main.isChecked() != state:
+                    self.toggle_voice_main.setChecked(state)
 
     def createGlassCard(self):
         """ Створює стилізовану білу напівпрозору картку """
@@ -440,16 +491,11 @@ class UI_MainWindow(QMainWindow):
     def load_settings_data(self):
         self.settings_file = "pyqt5_ui/settings_ui.json"
         
-        # Базова структура (тепер включає general)
         default_path = os.path.join(os.path.expanduser("~"), "Pictures", "Screenshots")
         self.settings_data = {
-            "screenshot": {
-                "format": "PNG",
-                "path": default_path
-            },
-            "general": {
-                "assis_activate": "BOTH" # За замовчуванням обидва методи
-            }
+            "screenshot": {"format": "PNG", "path": default_path},
+            "general": {"assis_activate": "BOTH"},
+            "voice": {"voice_support": True}
         }
 
         if os.path.exists(self.settings_file):
@@ -459,21 +505,9 @@ class UI_MainWindow(QMainWindow):
                     if content:
                         loaded_data = json.loads(content)
                         # Злиття даних для всіх секцій
-                        for key in ["screenshot", "general"]:
+                        for key in ["screenshot", "general", "voice"]:
                             if key in loaded_data:
                                 self.settings_data[key].update(loaded_data[key])
-            except Exception as e:
-                print(f"Помилка читання JSON: {e}")
-        # 2. Спроба зчитати файл
-        if os.path.exists(self.settings_file):
-            try:
-                with open(self.settings_file, "r", encoding="utf-8") as f:
-                    content = f.read().strip()
-                    if content: # Перевірка чи файл не порожній
-                        loaded_data = json.loads(content)
-                        # Розумне оновлення: зливаємо screenshot дані
-                        if "screenshot" in loaded_data:
-                            self.settings_data["screenshot"].update(loaded_data["screenshot"])
             except Exception as e:
                 print(f"Помилка читання JSON: {e}")
 
@@ -498,12 +532,11 @@ class UI_MainWindow(QMainWindow):
         target[keys[-1]] = value
 
         # Записуємо оновлений словник у файл
-        try:
-            with open(self.settings_file, "w", encoding="utf-8") as f:
-                json.dump(self.settings_data, f, indent=4, ensure_ascii=False)
-            print(f"Збережено в JSON: {keys} -> {value}")
-        except Exception as e:
-            print(f"Помилка запису файлу: {e}")
+
+        with open(self.settings_file, "w", encoding="utf-8") as f:
+            json.dump(self.settings_data, f, indent=4, ensure_ascii=False)
+
+
 
     def setup_commands_page(self):
         # Очистка лейауту (стандартна процедура для рефрешу сторінки)
@@ -677,6 +710,13 @@ class UI_MainWindow(QMainWindow):
         shadow.setColor(QColor(0, 0, 0, 30))  # Колір тіні (чорний з прозорістю)
         self.InputField.setGraphicsEffect(shadow)
 
+
+    def clickButton_Send(self):
+        user_text = self.InputField.text()
+        text = user_text.strip()
+        comm.final_command.emit(text)
+        self.InputField.setText("")
+
     def createButtonSend(self):
         self.button_send = QtWidgets.QPushButton(self.centralwidget)
         self.button_send.setGeometry(QtCore.QRect(690, 460, 30, 30))
@@ -696,6 +736,7 @@ class UI_MainWindow(QMainWindow):
         icon.addPixmap(QtGui.QPixmap("../image/icon/send_regular_icon.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.button_send.setIcon(icon)
         self.button_send.setObjectName("button_send")
+        self.button_send.clicked.connect(self.clickButton_Send)
         self.saved_text = ""
 
 
@@ -928,20 +969,23 @@ class UI_MainWindow(QMainWindow):
 
         self.createQuickSettingRow("Темна тема", 60)
         self.createQuickSettingRow("Автозапуск", 110)
-        self.createQuickSettingRow("Голос", 160)
-
-        self.settings_full = False
+        self.toggle_voice_quick = self.createQuickSettingRow("Голос", 160)
+        
+        # Встановлюємо початковий стан
+        voice_state = self.settings_data.get("voice", {}).get("voice_support", True)
+        self.toggle_voice_quick.setChecked(voice_state)
+        
+        # Підключаємо сигнал
+        self.toggle_voice_quick.toggled.connect(lambda checked: self.sync_voice_support(checked, "quick"))
 
     def createQuickSettingRow(self, text, y_pos):
-        """ Допоміжна функція для створення рядка налаштувань """
-        # Текст
         lbl = QLabel(text, self.settings_content)
         lbl.setGeometry(20, y_pos, 120, 20)
-        lbl.setStyleSheet("color: #581c87; font-size: 11pt;")
+        lbl.setStyleSheet("color: #581c87; font-size: 11pt; border: none; background: transparent;")
         
-        # Тумблер (GlassToggle)
         toggle = GlassToggle(self.settings_content)
-        toggle.move(150, y_pos) # Позиція X=150 (справа)
+        toggle.move(150, y_pos)
+        return toggle # Повертаємо об'єкт для подальшого використання
 
 
 

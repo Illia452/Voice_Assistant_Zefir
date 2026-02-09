@@ -5,5 +5,8 @@
     },
     "general": {
         "assis_activate": "KEYS"
+    },
+    "voice": {
+        "voice_support": true
     }
 }

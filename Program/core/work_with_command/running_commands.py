@@ -6,6 +6,7 @@ import os
 import time
 import screen_brightness_control as sbc 
 import subprocess
+import webbrowser
 
 class Screenshot():
     def __init__(self):
@@ -48,7 +49,7 @@ class Screenshot():
                     "monitor": "str" (1/2/3/0) - 0 це всі дисплеї, 1 - перший дисплей,
                     "format": "str", (JPG/PNG)
                     "path": "str", 
-                    "voice_response": "Текст озвучки", 
+                    "voice_response": "Текст озвучки" - (в кінці речення обов'язоково ставимо КРАПКУ), 
                     "all_data": true (чи усі дані зібрані? Якщо так то - true/ ні - false(продовжуємо допитувати дані у користувача))
                 }}
                 </output_format>
@@ -108,7 +109,7 @@ class BrightnessControl():
         Поверни JSON:
         {{
             "new_brightness_value": int (0-100),
-            "voice_response": "Текст, наприклад: 'Яскравість 70 відсотків'",
+            "voice_response": "Текст, наприклад: 'Яскравість 70 відсотків'" - (в кінці речення обов'язоково ставимо КРАПКУ),
             "all_data": true
         }}
         </output_format>
@@ -153,7 +154,7 @@ class AppControl:
         {{
             "app_name": "Назва зі списку АБО null, якщо це системний протокол",
             "system_command": "Команда (наприклад: 'start calculator:') АБО null, якщо це звичайна програма",
-            "voice_response": "Запускаю [Назва]",
+            "voice_response": "Запускаю [Назва]" - (в кінці речення обов'язоково ставимо КРАПКУ),
             "all_data": true,
             "is_system": true/false
         }}
@@ -187,7 +188,6 @@ class AppControl:
             cmd = f'powershell "Start-Process shell:AppsFolder\\$((Get-StartApps | Where-Object {{ $_.Name -eq \'{app_name}\' }}).AppID)"'
             subprocess.Popen(cmd, shell=True)
 
-import webbrowser
 
 class WebControl:
     def __init__(self):
@@ -206,7 +206,7 @@ class WebControl:
         Поверни JSON:
         {{
             "url": "повне посилання з https://",
-            "voice_response": "Відкриваю [назва сайту]",
+            "voice_response": "Відкриваю [назва сайту]" - (в кінці речення обов'язоково ставимо КРАПКУ),
             "all_data": true
         }}
         """

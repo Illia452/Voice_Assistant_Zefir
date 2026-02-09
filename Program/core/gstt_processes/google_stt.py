@@ -171,6 +171,7 @@ def listen_print_loop(responses: object, self) -> str:
 
         else:
             print(transcript + overwrite_chars)
+            comm.stream_text_gstt.emit(transcript + overwrite_chars)
 
             # Exit recognition if any of the transcribed phrases could be
             # one of our keywords.

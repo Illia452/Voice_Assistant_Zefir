@@ -5,10 +5,15 @@ from dotenv import load_dotenv
 from PyQt5.QtCore import QObject, pyqtSlot
 from communications import comm 
 import random
+import time
+import json
 
 class Google_TTS_Model(QObject):
     def __init__(self):
         super().__init__()
+
+        self.check_ui_data()
+        self.get_data()
 
         comm.text_for_voicework.connect(self.get_text)
         comm.stop_gtts.connect(self.close_all)
@@ -33,6 +38,13 @@ class Google_TTS_Model(QObject):
             )
         )
 
+    def get_data(self):
+        self.method_activation = self.data.get("voice", {}).get("voice_support")
+
+    def check_ui_data(self):
+        with open('pyqt5_ui/settings_ui.json', 'r', encoding='utf-8') as f:
+            self.data = json.load(f)
+        
 
     @pyqtSlot()
     def get_activation_phrase(self):
@@ -42,18 +54,22 @@ class Google_TTS_Model(QObject):
             "До ваших послуг.",
             "Так?",
             "Кажіть.",
-            "Тут.",
             "Слухаю.",
             "Слухаю уважно.",
             "Чим можу допомогти?"
         ]
         text = random.choice(phrases)
         self.get_text(text)
+        time.sleep(0.4)
+        comm.start_gstt.emit()
+
 
 
     @pyqtSlot(str)
     def get_text(self, text):
-        if not text:
+        self.check_ui_data()
+        self.get_data()
+        if not text or self.method_activation == False:
             return
 
         print(f"Озвучую: {text}")
