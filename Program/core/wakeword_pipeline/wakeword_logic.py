@@ -85,6 +85,7 @@ class WakeWordChecker(QObject):
         await self.check_ui_data()
         await self.get_data()
         if self.method_activation in ["VOICE", "BOTH"]:
+            
             await self.search_wakeword(text)
         
     async def get_data(self):
@@ -139,7 +140,7 @@ class SpeechWaiter(QObject):
     async def check_wait_time(self, wakeword_logic):
 
         try:
-            await asyncio.sleep(5)
+            await asyncio.sleep(6)
             print("ЧАС ОЧІКУВАННЯ МОВЛЕННЯ МИНУВ")
             comm.stop_gstt.emit()
             comm.reset_wakeword.emit()
