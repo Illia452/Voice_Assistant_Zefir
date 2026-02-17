@@ -21,7 +21,7 @@ class AnalyzeCommand(QObject):
             "screen": Screenshot(),
             "brightness": BrightnessControl(),
             "open_app": AppControl(),
-            "open_website": WebControl()
+            "open_website_yt": WebControl()
         }
         
     def get_fresh_chat(self):

@@ -7,6 +7,7 @@ import time
 import screen_brightness_control as sbc 
 import subprocess
 import webbrowser
+import yt_dlp
 
 class Screenshot():
     def __init__(self):
@@ -195,24 +196,92 @@ class WebControl:
 
     def create_prompt(self, user_command):
         self.PROMPT = f"""
-        ЗАВДАННЯ: Відкрити веб-сайт або знайти інформацію.
+        ЗАВДАННЯ: Визначити намір користувача щодо веб-ресурсів та YouTube.
         КОРИСТУВАЧ СКАЗАВ: "{user_command}"
 
-        Твоя задача:
-        1. Визнач, який сайт хоче користувач (наприклад, "ютуб" -> "https://www.youtube.com").
-        2. Якщо це конкретний запит на пошук (наприклад, "знайди як варити борщ"), сформуй посилання на Google пошук: 
-           "https://www.google.com/search?q=як+варити+борщ"
-        
-        Поверни JSON:
-        {{
-            "url": "повне посилання з https://",
-            "voice_response": "Відкриваю [назва сайту]" - (в кінці речення обов'язоково ставимо КРАПКУ),
-            "all_data": true
-        }}
-        """
+        ПРАВИЛА ВИБОРУ (ДІЙ СУВОРО ЗА ЦИМ АЛГОРИТМОМ):
 
+        1. ЯКЩО запит стосується ВІДЕО, МУЗИКИ, ПІСЕНЬ, КЛІПІВ або "ПОДИВИТИСЬ/ВКЛЮЧИТИ":
+        - youtube: true
+        - url: "https://www.youtube.com"
+        - type_search_yt: "specific" (якщо це назва пісні, конкретне відео, кліп або автор)
+        - type_search_yt: "global" (якщо це загальна тема: "рецепти", "уроки", "смішні коти")
+        - query: тільки назва контенту (наприклад: "остання пісня євробачення україна")
+        ЯКЩО  type_search_yt: "global" то сформуй посилання на Google пошук (наприклад, "знайди рецепт смачного печива"): 
+           "https://www.youtube.com/results?search_query=рецепт+смачного+печива"
+
+        2. ЯКЩО користувач хоче ВІДКРИТИ КОНКРЕТНИЙ САЙТ (GitHub, Google, Facebook, StackOverflow):
+        - youtube: false
+        - type_search_yt: "false"
+        - url: пряме посилання на головну сторінку сайту.
+
+        3. ЯКЩО це ЗАГАЛЬНЕ ЗАПИТАННЯ або пошук інформації (не відео):
+        - youtube: false
+        - type_search_yt: "false"
+        - url: "https://www.google.com/search?q=" + запит.
+
+        СТРУКТУРА ВІДПОВІДІ (ТІЛЬКИ JSON):
+        {{
+            "url": "посилання",
+            "all_data": true,
+            "voice_response": "Коротка фраза (завжди з крапкою в кінці).",
+            "youtube": true/false,
+            "type_search_yt": "global/specific/false",
+            "query": "пошуковий запит"
+        }}
+
+        ВАЖЛИВО: Пісні, кліпи — це ЗАВЖДИ youtube: true.
+"""
+        
+        
     def running_command(self, response_json):
         url = response_json.get("url")
-        if url:
-            webbrowser.open_new_tab(url)
-            print(f">>> СИСТЕМА: Відкрито посилання {url}")
+        yt = response_json.get("youtube")
+        ytt = response_json.get("type_search_yt")
+        query = response_json.get("query")
+
+        if yt == True:
+            if ytt == "global":
+                self.open_url(url)
+            elif ytt == "specific":
+                video_url = self.get_top_youtube_video(query)
+                self.open_url(video_url)
+        else:
+            self.open_url(url)
+
+    def open_url(self, url):
+        webbrowser.open_new_tab(url)
+        print(f">>> Відкрито посилання {url}")
+
+    
+    def get_top_youtube_video(self, query):
+
+        ydl_opts = {
+            'format': 'best',
+            'quiet': True,             
+            'no_warnings': True,
+            'noplaylist': True,        
+            'extract_flat': True,     
+            'skip_download': True, 
+            'geo_bypass': True,             # Обхід гео-блокувань
+            'match_filter': None,           
+            'headers': {
+                'Accept-Language': 'uk-UA,uk;q=0.9',
+    }
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+          
+            search_query = f"ytsearch1:{query}"
+            info = ydl.extract_info(search_query, download=False)
+
+            if 'entries' in info and len(info['entries']) > 0:
+                video = info['entries'][0]
+
+                video_url = f"https://www.youtube.com/watch?v={video['id']}"
+                return video_url
+        
+        
+
+
+    
