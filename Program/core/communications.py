@@ -22,5 +22,6 @@ class Communications(QObject):
     stop_gtts = pyqtSignal()
     wake_up_feedback = pyqtSignal()
     activate_assistant = pyqtSignal()
+    update_history = pyqtSignal()
 
 comm = Communications()

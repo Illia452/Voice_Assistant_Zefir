@@ -5,12 +5,13 @@ from PyQt5.QtWidgets import QGraphicsDropShadowEffect, QButtonGroup
 from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtGui import QPixmap
 import sys
-from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, pyqtProperty, QPoint, QSize
+from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, pyqtProperty, QPoint, QTimer
 from PyQt5.QtWidgets import QGraphicsOpacityEffect, QCheckBox
 from PyQt5.QtGui import QColor, QFont, QPixmap, QPainter, QIcon
 import json
 import os
 from communications import comm
+import arrow
 
 
 class ModernRadioButton(QtWidgets.QRadioButton):
@@ -97,6 +98,8 @@ class UI_MainWindow(QMainWindow):
             self.data = json.load(f)
 
         self.setupUI()
+        comm.update_history.connect(self.update_history)
+        self.setup_auto_update()
 
     def closeEvent(self, event):
         comm.stop_gtts.emit()
@@ -115,6 +118,7 @@ class UI_MainWindow(QMainWindow):
         self.createSettingPanel()
         self.createHistoryPanel()
         self.full_setting_content()
+        self.full_history_content()
 
 
 
@@ -957,15 +961,30 @@ class UI_MainWindow(QMainWindow):
         self.icon_sett.setCursor(Qt.PointingHandCursor)
         self.icon_sett.mousePressEvent = self.toggleSettingsPanel
 
-        self.btn_full_settings = QtWidgets.QLabel(self.settings_content)
-        self.btn_full_settings.setPixmap(QPixmap("../image/icon/arrow_right_regular_icon.svg"))
-        self.btn_full_settings.setGeometry(185, 0, 40, 40)
-        self.btn_full_settings.setCursor(Qt.PointingHandCursor)
-        self.btn_full_settings.setStyleSheet("""
-            QPushButton { color: #581c87; font-weight: bold; font-size: 16px; background: transparent; }
-            QPushButton:hover { background: rgba(255,255,255,0.3); border-radius: 15px; }
+        self.lbl_settings_title = QLabel("Налаштування", self.settings_content)
+        self.lbl_settings_title.setGeometry(40, 10, 140, 20)
+        self.lbl_settings_title.setAlignment(Qt.AlignCenter)
+        self.lbl_settings_title.setStyleSheet("color: #581c87; font-size: 11pt; font-weight: bold;")
+
+        # ЧОРНА ЗОНА: Кнопка "Більше" знизу
+        self.btn_more_settings = QtWidgets.QPushButton("Більше", self.settings_content)
+        self.btn_more_settings.setGeometry(20, 320, 180, 35)
+        self.btn_more_settings.setCursor(Qt.PointingHandCursor)
+        self.btn_more_settings.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(139, 92, 246, 0.1);
+                color: #581c87;
+                border: 1px solid rgba(139, 92, 246, 0.3);
+                border-radius: 10px;
+                font-weight: bold;
+                font-size: 15px;
+            }
+            QPushButton:hover {
+                background-color: rgba(139, 92, 246, 0.2);
+                border: 1px solid #8b5cf6;
+            }
         """)
-        self.btn_full_settings.mousePressEvent = self.full_setting_panel
+        self.btn_more_settings.clicked.connect(self.full_setting_panel)
 
         self.createQuickSettingRow("Темна тема", 60)
         self.createQuickSettingRow("Автозапуск", 110)
@@ -1102,73 +1121,129 @@ class UI_MainWindow(QMainWindow):
         self.create_HistoryContent()
 
         self.history_open = False
-        self.history_full = False
 
-        # Логіка кліків (як ми робили для налаштувань)
+        # Логіка кліків
         self.history_icon.setAttribute(Qt.WA_TransparentForMouseEvents, False)
         self.history_icon.setCursor(Qt.PointingHandCursor)
         self.history_icon.mousePressEvent = self.toggleHistoryPanel
 
     def create_HistoryContent(self):
         self.history_content = QtWidgets.QWidget(self.history_panel)
-        # Розмір контенту: ширина 245, висота 450
-        self.history_content.setGeometry(0, 0, 245, 450)
+        self.history_content.setGeometry(0, 0, 220, 375)
         self.history_content.setStyleSheet("background: transparent; border: none;")
         self.history_content.hide()
 
-        # Кнопка-іконка всередині (щоб клікати для закриття)
-        # Важливо: у налаштувань вона зліва (0,0), тут краще теж лишити її логічно
-        # або змістити вправо, якщо хочеш дзеркальності. Я залишу зліва для зручності.
+        # Заголовок та кнопка іконки (залишаємо як було)
         self.icon_hist_inner = QtWidgets.QPushButton(self.history_content)
-        self.icon_hist_inner.setGeometry(0, 0, 40, 40) # Або (205, 0) якщо хочеш справа
+        self.icon_hist_inner.setGeometry(180, 0, 40, 40)
         self.icon_hist_inner.setStyleSheet("background: transparent; border: none;")
-        self.icon_hist_inner.setCursor(Qt.PointingHandCursor)
-        self.icon_hist_inner.mousePressEvent = self.toggleHistoryPanel
-        
-        # Кнопка розгортання на весь екран (стрілочка)
-        self.btn_full_history = QtWidgets.QLabel(self.history_content)
-        self.btn_full_history.setPixmap(QPixmap("../image/icon/arrow_right_regular_icon.svg"))
-        # Розміщуємо стрілку з іншого боку або так само
-        self.btn_full_history.setGeometry(200, 0, 40, 40)
-        self.btn_full_history.setCursor(Qt.PointingHandCursor)
-        self.btn_full_history.setStyleSheet("""
-            QLabel:hover { background: rgba(255,255,255,0.3); border-radius: 15px; }
-        """)
-        self.btn_full_history.mousePressEvent = self.full_history_panel
+        self.icon_hist_inner.clicked.connect(self.toggleHistoryPanel)
 
-        # Заголовок "Історія"
         self.lbl_history_title = QLabel("Історія", self.history_content)
-        self.lbl_history_title.setGeometry(60, 10, 120, 20)
+        self.lbl_history_title.setGeometry(45, 10, 130, 20)
         self.lbl_history_title.setAlignment(Qt.AlignCenter)
-        self.lbl_history_title.setStyleSheet("color: #581c87; font-size: 12pt; font-weight: bold;")
+        self.lbl_history_title.setStyleSheet("color: #581c87; font-size: 11pt; font-weight: bold;")
 
-        # Scroll Area для списку
+        # СТВОРЮЄМО СКРОЛ-ЗОНУ
         self.history_scroll = QtWidgets.QScrollArea(self.history_content)
-        self.history_scroll.setGeometry(10, 50, 225, 390)
+        self.history_scroll.setGeometry(10, 50, 200, 260)
         self.history_scroll.setWidgetResizable(True)
-        # Прибираємо рамки самого скролу, щоб було "чисто"
+        self.history_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff) # Вимикаємо горизонтальну прокрутку
         self.history_scroll.setStyleSheet("""
             QScrollArea { background: transparent; border: none; }
-            QScrollBar:vertical { width: 8px; background: transparent; }
-            QScrollBar::handle:vertical { background: rgba(88, 28, 135, 0.3); border-radius: 4px; }
+            QScrollBar:vertical {
+                width: 4px;
+                background: transparent;
+            }
+            QScrollBar::handle:vertical {
+                background: rgba(139, 92, 246, 0.4);
+                border-radius: 2px;
+            }
         """)
         
-        self.scroll_content_widget = QtWidgets.QWidget()
-        self.scroll_layout = QtWidgets.QVBoxLayout(self.scroll_content_widget)
-        self.history_scroll.setWidget(self.scroll_content_widget)
+        # Віджет-контейнер для списку
+        self.scroll_content = QtWidgets.QWidget()
+        self.scroll_content.setStyleSheet("background: transparent;")
+        self.scroll_layout = QtWidgets.QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setContentsMargins(5, 5, 5, 5)
+        self.scroll_layout.setSpacing(8)
+        self.scroll_layout.addStretch() # Пружина знизу, щоб блоки не розтягувалися
+        
+        self.history_scroll.setWidget(self.scroll_content)
+
+        # Кнопка Більше
+        self.btn_more_history = QtWidgets.QPushButton("Більше", self.history_content)
+        self.btn_more_history.setGeometry(20, 325, 180, 35)
+        self.btn_more_history.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(139, 92, 246, 0.15);
+                color: #581c87;
+                border: 1px solid rgba(139, 92, 246, 0.3);
+                border-radius: 10px;
+                font-weight: bold;
+                font-size: 15px;
+            }
+            QPushButton:hover {
+                background-color: rgba(139, 92, 246, 0.2);
+                border: 1px solid #8b5cf6;
+            }
+        """) 
+        self.btn_more_history.clicked.connect(self.full_history_panel)
+
+        # ДЛЯ ТЕСТУ: додамо кілька блоків
+        self.update_history()
+
+    def setup_auto_update(self):
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_history)
+
+        self.timer.start(60000)
+
+    @pyqtSlot()
+    def update_history(self):
+        while self.scroll_layout.count() > 0:
+            item = self.scroll_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater() 
+
+
+        history_file = "pyqt5_ui/history_ui.json"
+        
+        with open(history_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        history = data.get("history", {})
+        i = 0
+        for event in history:
+            i += 1
+            t = arrow.get(event[0])
+            time = t.humanize(locale='uk')
+            now = arrow.now()
+            diff = now.timestamp() - event[0]
+            if diff < 60:
+                time = "щойно"
+            if t.date() == arrow.now().shift(days=-1).date():
+                time = "Вчора"
+
+            self.add_history_item(event[1], time)
+
+            if i > 20:
+                break
+                
+
 
     def toggleHistoryPanel(self, event=None):
-        anim = QPropertyAnimation(self.history_panel, b"geometry")
-        anim.setDuration(400)
-        anim.setEasingCurve(QEasingCurve.OutBack)
+        # Копіюємо логіку перевірки стану (як у settings)
+
+        self.anim_hist = QPropertyAnimation(self.history_panel, b"geometry")
+        self.anim_hist.setDuration(400)
+        self.anim_hist.setEasingCurve(QEasingCurve.OutBack) # Така ж крива, як у settings
 
         if not self.history_open:
-            # ВІДКРИТТЯ (Initial -> Quick View)
-            # Старт: X=900, W=40 (правий край = 940)
-            anim.setStartValue(QRect(900, 50, 40, 40))
-            
-            # Фініш: Ширина 245. Щоб правий край лишився 940, X має стати: 940 - 245 = 695
-            anim.setEndValue(QRect(695, 50, 245, 450))
+            # Відкриття: рухаємося з x=900 (кнопка) до x=720 (панель)
+            self.anim_hist.setStartValue(QRect(900, 50, 40, 40))
+            self.anim_hist.setEndValue(QRect(720, 50, 220, 375))
             
             self.history_panel.setStyleSheet("""
                 QWidget {
@@ -1180,10 +1255,11 @@ class UI_MainWindow(QMainWindow):
             """)
             self.history_content.show()
             self.history_open = True
+            self.history_icon.move(180, 0) # Переміщуємо іконку в край панелі
         else:
-            # ЗАКРИТТЯ (Quick View -> Initial)
-            anim.setStartValue(QRect(695, 50, 245, 450))
-            anim.setEndValue(QRect(900, 50, 40, 40))
+            # Закриття
+            self.anim_hist.setStartValue(QRect(720, 50, 220, 375))
+            self.anim_hist.setEndValue(QRect(900, 50, 40, 40))
             
             self.history_panel.setStyleSheet("""
                 QWidget {
@@ -1195,50 +1271,115 @@ class UI_MainWindow(QMainWindow):
             """)
             self.history_content.hide()
             self.history_open = False
-            self.history_full = False # Скидаємо прапорець повного екрану
+            self.history_icon.move(0, 0)
 
-        anim.start()
-        self.history_panel.anim = anim
+        self.anim_hist.start()
+    # --- ЛОГІКА ПОВНОЕКРАННОЇ ІСТОРІЇ ---
+
+    def full_history_content(self):
+        """ Контейнер історії на весь екран (аналог full_setting_content) """
+        self.history_main_container = QtWidgets.QWidget(self.centralwidget)
+        self.history_main_container.setGeometry(0, 0, 960, 600)
+        self.history_main_container.setStyleSheet("background: #EDE9FE;") 
+        
+        self.fade_effect_hist = QGraphicsOpacityEffect(self.history_main_container)
+        self.history_main_container.setGraphicsEffect(self.fade_effect_hist)
+        self.fade_effect_hist.setOpacity(0)
+        self.history_main_container.hide()
+
+        layout_full_hist = QtWidgets.QVBoxLayout(self.history_main_container)
+        layout_full_hist.setContentsMargins(30, 20, 30, 20)
+        layout_full_hist.setAlignment(Qt.AlignTop)
+
+        self.btn_back_hist = QtWidgets.QPushButton("  Назад")
+        self.btn_back_hist.setCursor(Qt.PointingHandCursor)
+        self.btn_back_hist.setMinimumSize(100, 40)
+        self.btn_back_hist.clicked.connect(self.close_history) 
+        self.btn_back_hist.setIcon(QtGui.QIcon("../image/icon/arrow_left_regular_icon.svg")) 
+        self.btn_back_hist.setStyleSheet("""
+            QPushButton {
+                background-color: white; border-radius: 12px; color: #581c87;
+                font-size: 15px; font-weight: bold; border: 1px solid rgba(139, 92, 246, 0.2);
+            }
+            QPushButton:hover { background-color: #F5F3FF; border: 1px solid #8b5cf6; }
+        """)
+        layout_full_hist.addWidget(self.btn_back_hist, alignment=Qt.AlignLeft)
+
+    def close_history(self):
+        """ Закриття повноекранної історії з анімацією """
+        self.anim_opacity_hist_close = QPropertyAnimation(self.fade_effect_hist, b"opacity")
+        self.anim_opacity_hist_close.setDuration(400)
+        self.anim_opacity_hist_close.setStartValue(1.0)
+        self.anim_opacity_hist_close.setEndValue(0.0)
+        self.anim_opacity_hist_close.setEasingCurve(QEasingCurve.InQuad)
+
+        self.anim_pos_hist_close = QPropertyAnimation(self.history_main_container, b"geometry")
+        self.anim_pos_hist_close.setDuration(400)
+        self.anim_pos_hist_close.setStartValue(QRect(0, 0, 960, 600))
+        self.anim_pos_hist_close.setEndValue(QRect(0, 30, 960, 600))
+        
+        self.anim_opacity_hist_close.finished.connect(self.history_main_container.hide)
+
+        self.anim_opacity_hist_close.start()
+        self.anim_pos_hist_close.start()
+
+    def add_history_item(self, text, time_str):
+        # Контейнер для однієї картки
+        item_widget = QtWidgets.QWidget()
+        item_widget.setMinimumHeight(60)
+        item_widget.setStyleSheet("""
+            QWidget {
+                background-color: rgba(255, 255, 255, 0.5);
+                border-radius: 10px;
+                border: 1px solid rgba(139, 92, 246, 0.1);
+            }
+            QWidget:hover {
+                background-color: rgba(255, 255, 255, 0.8);
+                border: 1px solid rgba(139, 92, 246, 0.3);
+            }
+        """)
+
+        layout = QtWidgets.QVBoxLayout(item_widget)
+        layout.setContentsMargins(10, 5, 10, 5)
+        layout.setSpacing(2)
+
+        # Текст запиту
+        lbl_text = QLabel(text)
+        lbl_text.setWordWrap(True)
+        lbl_text.setStyleSheet("color: #1f2937; font-size: 15px; font-weight: 500; border: none; background: transparent;")
+
+        # Час
+        lbl_time = QLabel(time_str)
+        lbl_time.setStyleSheet("color: #6e737a; font-size: 12px; border: none; background: transparent;")
+
+        layout.addWidget(lbl_text)
+        layout.addWidget(lbl_time)
+
+        # Додаємо у головний лейаут скролу (який ми створимо нижче)
+        self.scroll_layout.insertWidget(0, item_widget) # Нові записи будуть зверху
 
     def full_history_panel(self, event=None):
-        anim = QPropertyAnimation(self.history_panel, b"geometry")
-        anim.setDuration(500)
-        anim.setEasingCurve(QEasingCurve.OutBack)
+        """ Відкриття історії на весь екран """
+        if self.history_open:
+            self.toggleHistoryPanel() # Плавно ховаємо маленьке вікно
 
-        if not self.history_full:
-            # РОЗГОРТАННЯ НА ВЕСЬ ЕКРАН
-            anim.setStartValue(QRect(695, 50, 245, 450)) # Поточний стан
-            anim.setEndValue(QRect(0, 0, 960, 600))      # На все вікно
-            
-            self.history_panel.setStyleSheet("""
-                QWidget {
-                    background-color: rgba(255, 255, 255, 0.45);
-                    border-radius: 0px;
-                    border: 1px solid rgba(255, 255, 255, 0.6);
-                }
-                QLabel { background: transparent; border: none; }
-            """)
-            self.history_full = True
-        else:
-            # ПОВЕРНЕННЯ ДО МАЛЕНЬКОГО ВІКНА (не до кнопки, а до панелі 245х450)
-            anim.setStartValue(QRect(0, 0, 960, 600))
-            anim.setEndValue(QRect(900, 50, 40, 40)) # Або одразу згортаємо в кнопку, як у налаштуваннях
-            
-            # Якщо хочеш як у налаштуваннях (одразу в іконку):
-            self.history_panel.setStyleSheet("""
-                QWidget {
-                    background-color: rgba(255, 255, 255, 0.45);
-                    border-radius: 8px;
-                    border: 1px solid rgba(255, 255, 255, 0.6);
-                }
-                QLabel { background: transparent; border: none; }
-            """)
-            self.history_content.hide()
-            self.history_open = False
-            self.history_full = False
+        self.history_main_container.show()
+        self.history_main_container.raise_()
 
-        anim.start()
-        self.history_panel.anim = anim
+        self.anim_opacity_hist = QPropertyAnimation(self.fade_effect_hist, b"opacity")
+        self.anim_opacity_hist.setDuration(500)
+        self.anim_opacity_hist.setStartValue(0.0)
+        self.anim_opacity_hist.setEndValue(1.0)
+        self.anim_opacity_hist.setEasingCurve(QEasingCurve.OutQuad)
+
+        self.anim_pos_hist = QPropertyAnimation(self.history_main_container, b"geometry")
+        self.anim_pos_hist.setDuration(500)
+        self.anim_pos_hist.setStartValue(QRect(0, 30, 960, 600))
+        self.anim_pos_hist.setEndValue(QRect(0, 0, 960, 600))
+        self.anim_pos_hist.setEasingCurve(QEasingCurve.OutBack)
+
+        self.anim_opacity_hist.start()
+        self.anim_pos_hist.start()
 
 
 

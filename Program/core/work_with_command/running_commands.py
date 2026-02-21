@@ -8,6 +8,29 @@ import screen_brightness_control as sbc
 import subprocess
 import webbrowser
 import yt_dlp
+import json
+from communications import comm
+
+def update_history(info_sh, info_l):
+    history_file = "pyqt5_ui/history_ui.json"
+        
+    with open(history_file, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    history = data.get("history", {})
+
+
+    timee = int(time.time())
+    new_event = [timee, info_sh, info_l]
+    history.append(new_event)
+
+    
+    with open(history_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+    comm.update_history.emit()
+
+    
 
 class Screenshot():
     def __init__(self):
@@ -52,6 +75,8 @@ class Screenshot():
                     "path": "str", 
                     "voice_response": "Текст озвучки" - (в кінці речення обов'язоково ставимо КРАПКУ), 
                     "all_data": true (чи усі дані зібрані? Якщо так то - true/ ні - false(продовжуємо допитувати дані у користувача))
+                    "info_his_short": "Максимально короткий опис команди для відображення у динамічному списку історії(2-3 слова)(при умові якщо ми фізично не можемо вмістити наш запит наприклад: у нас є певний пошуковий запит то ми так і кажемо що це пошуковий запит)",
+                    "info_his_long": "Повний опис команди для відображення у великому списку історії(повний опис команди до 10 слів)
                 }}
                 </output_format>
                 """)
@@ -61,11 +86,13 @@ class Screenshot():
         monitor = response_json.get("monitor")
         format = response_json.get("format")
         path = response_json.get("path")
+        info_sh = response_json.get("info_his_short")
+        info_l = response_json.get("info_his_long")
 
 
-        self.take_screenshot(monitor, path, format)
+        self.take_screenshot(monitor, path, format, info_sh, info_l)
 
-    def take_screenshot(self, monitor_index, save_path, file_format):
+    def take_screenshot(self, monitor_index, save_path, file_format, info_sh, info_l):
 
         time.sleep(0.2)
 
@@ -81,6 +108,7 @@ class Screenshot():
 
             mss.tools.to_png(screenshot.rgb, screenshot.size, output=output)
             print(f"Збережено: {output}")
+            update_history(info_sh, info_l)
 
 
 class BrightnessControl():
@@ -112,16 +140,22 @@ class BrightnessControl():
             "new_brightness_value": int (0-100),
             "voice_response": "Текст, наприклад: 'Яскравість 70 відсотків'" - (в кінці речення обов'язоково ставимо КРАПКУ),
             "all_data": true
+            "info_his_short": "Максимально короткий опис команди для відображення у динамічному списку історії(2-3 слова)(при умові якщо ми фізично не можемо вмістити наш запит наприклад: у нас є певний пошуковий запит то ми так і кажемо що це пошуковий запит)",
+            "info_his_long": "Повний опис команди для відображення у великому списку історії(повний опис команди до 10 слів)
         }}
         </output_format>
         """)
 
     def running_command(self, response_json):
         new_val = response_json.get("new_brightness_value")
+        info_sh = response_json.get("info_his_short")
+        info_l = response_json.get("info_his_long")
         if new_val is not None:
 
             sbc.set_brightness(new_val)
             print(f"Яскравість змінено на {new_val}")
+
+            update_history(info_sh, info_l)
             
 
 class AppControl:
@@ -158,6 +192,8 @@ class AppControl:
             "voice_response": "Запускаю [Назва]" - (в кінці речення обов'язоково ставимо КРАПКУ),
             "all_data": true,
             "is_system": true/false
+            "info_his_short": "Максимально короткий опис команди для відображення у динамічному списку історії(2-3 слова)(при умові якщо ми фізично не можемо вмістити наш запит наприклад: у нас є певний пошуковий запит то ми так і кажемо що це пошуковий запит)",
+            "info_his_long": "Повний опис команди для відображення у великому списку історії(повний опис команди до 10 слів)
         }}
 
         ПІДКАЗКА ПО СИСТЕМНИМ ПРОТОКОЛАМ:
@@ -175,12 +211,15 @@ class AppControl:
         is_system = response_json.get("is_system", False)
         system_cmd = response_json.get("system_command") # Наприклад: "start microsoft.windows.camera:"
         app_name = response_json.get("app_name")
+        info_sh = response_json.get("info_his_short")
+        info_l = response_json.get("info_his_long")
 
 
         if is_system and system_cmd:
             protocol = system_cmd.replace("start ", "").strip()
             print(f">>> Спроба відкрити протокол: {protocol}")
-            os.startfile(protocol) 
+            os.startfile(protocol)
+            update_history(info_sh, info_l)
             return
 
 
@@ -188,6 +227,8 @@ class AppControl:
             print(f">>> Шукаю AppID для: {app_name}")
             cmd = f'powershell "Start-Process shell:AppsFolder\\$((Get-StartApps | Where-Object {{ $_.Name -eq \'{app_name}\' }}).AppID)"'
             subprocess.Popen(cmd, shell=True)
+            update_history(info_sh, info_l)
+
 
 
 class WebControl:
@@ -228,6 +269,8 @@ class WebControl:
             "youtube": true/false,
             "type_search_yt": "global/specific/false",
             "query": "пошуковий запит"
+            "info_his_short": "Максимально короткий опис команди для відображення у динамічному списку історії(2-3 слова)(при умові якщо ми фізично не можемо вмістити наш запит наприклад: у нас є певний пошуковий запит то ми так і кажемо що це пошуковий запит)",
+            "info_his_long": "Повний опис команди для відображення у великому списку історії(повний опис команди до 10 слів)
         }}
 
         ВАЖЛИВО: Пісні, кліпи — це ЗАВЖДИ youtube: true.
@@ -238,6 +281,8 @@ class WebControl:
         url = response_json.get("url")
         yt = response_json.get("youtube")
         ytt = response_json.get("type_search_yt")
+        info_sh = response_json.get("info_his_short")
+        info_l = response_json.get("info_his_long")
         query = response_json.get("query")
 
         if yt == True:
@@ -248,6 +293,8 @@ class WebControl:
                 self.open_url(video_url)
         else:
             self.open_url(url)
+
+        update_history(info_sh, info_l)
 
     def open_url(self, url):
         webbrowser.open_new_tab(url)
@@ -263,7 +310,7 @@ class WebControl:
             'noplaylist': True,        
             'extract_flat': True,     
             'skip_download': True, 
-            'geo_bypass': True,             # Обхід гео-блокувань
+            'geo_bypass': True,             # оьхід геоблокувань
             'match_filter': None,           
             'headers': {
                 'Accept-Language': 'uk-UA,uk;q=0.9',
