@@ -182,11 +182,10 @@ class UI_MainWindow(QMainWindow):
         header_layout.setContentsMargins(30, 0, 30, 0)
 
         # Кнопка Назад
-        self.btn_back_full = QtWidgets.QPushButton("  Назад")
+        self.btn_back_full = QtWidgets.QPushButton("Назад")
         self.btn_back_full.setCursor(Qt.PointingHandCursor)
         self.btn_back_full.setMinimumSize(100, 40)
         self.btn_back_full.clicked.connect(self.close_set) # Твоя функція закриття
-        self.btn_back_full.setIcon(QtGui.QIcon("../image/icon/arrow_left.svg")) 
         self.btn_back_full.setStyleSheet("""
             QPushButton {
                 background-color: white; border-radius: 12px; color: #581c87;
@@ -1168,7 +1167,7 @@ class UI_MainWindow(QMainWindow):
         self.scroll_layout.setContentsMargins(5, 5, 5, 5)
         self.scroll_layout.setSpacing(8)
         self.scroll_layout.addStretch() # Пружина знизу, щоб блоки не розтягувалися
-        
+        self.scroll_layout.setAlignment(Qt.AlignTop)
         self.history_scroll.setWidget(self.scroll_content)
 
         # Кнопка Більше
@@ -1209,11 +1208,22 @@ class UI_MainWindow(QMainWindow):
 
 
         history_file = "pyqt5_ui/history_ui.json"
+
+
         
         with open(history_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
         history = data.get("history", {})
+
+        if not history:
+            # ПОКАЗУЄМО "ПОКИ НІЧОГО"
+            empty_lbl = QLabel("Поки нічого...")
+            empty_lbl.setAlignment(Qt.AlignCenter)
+            empty_lbl.setStyleSheet("color: #9ca3af; font-size: 15px; margin-top: 20px; border: none; background: transparent;")
+            self.scroll_layout.addWidget(empty_lbl)
+            return
+
         i = 0
         for event in history:
             i += 1
@@ -1230,6 +1240,7 @@ class UI_MainWindow(QMainWindow):
 
             if i > 20:
                 break
+        self.scroll_layout.addStretch(1)
                 
 
 
@@ -1287,15 +1298,32 @@ class UI_MainWindow(QMainWindow):
         self.fade_effect_hist.setOpacity(0)
         self.history_main_container.hide()
 
-        layout_full_hist = QtWidgets.QVBoxLayout(self.history_main_container)
-        layout_full_hist.setContentsMargins(30, 20, 30, 20)
-        layout_full_hist.setAlignment(Qt.AlignTop)
+        self.layout_full_hist = QtWidgets.QVBoxLayout(self.history_main_container)
+        self.layout_full_hist.setContentsMargins(30, 20, 30, 20)
+        self.layout_full_hist.setSpacing(20)
+        self.layout_full_hist.setAlignment(Qt.AlignTop)
+        
+        self.btn_clear_all = QtWidgets.QPushButton(" Очистити все")
+        self.btn_clear_all.setCursor(Qt.PointingHandCursor)
+        self.btn_clear_all.setMinimumSize(130, 40)
+        self.btn_clear_all.clicked.connect(self.clear_history_data)
+        self.btn_clear_all.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(239, 68, 68, 0.1); /* Легкий червоний */
+                border-radius: 12px; color: #ef4444;
+                font-size: 14px; font-weight: bold; border: 1px solid rgba(239, 68, 68, 0.2);
+            }
+            QPushButton:hover { background-color: #ef4444; color: white; }
+        """)
 
-        self.btn_back_hist = QtWidgets.QPushButton("  Назад")
+
+
+        header_layout = QtWidgets.QHBoxLayout()
+
+        self.btn_back_hist = QtWidgets.QPushButton("Назад")
         self.btn_back_hist.setCursor(Qt.PointingHandCursor)
         self.btn_back_hist.setMinimumSize(100, 40)
         self.btn_back_hist.clicked.connect(self.close_history) 
-        self.btn_back_hist.setIcon(QtGui.QIcon("../image/icon/arrow_left_regular_icon.svg")) 
         self.btn_back_hist.setStyleSheet("""
             QPushButton {
                 background-color: white; border-radius: 12px; color: #581c87;
@@ -1303,7 +1331,89 @@ class UI_MainWindow(QMainWindow):
             }
             QPushButton:hover { background-color: #F5F3FF; border: 1px solid #8b5cf6; }
         """)
-        layout_full_hist.addWidget(self.btn_back_hist, alignment=Qt.AlignLeft)
+        self.lbl_full_hist_title = QLabel("Детальна історія запитів")
+        self.lbl_full_hist_title.setStyleSheet("font-size: 24px; font-weight: bold; color: #581c87;")
+
+        header_layout.addWidget(self.btn_back_hist)
+        header_layout.addStretch()
+        header_layout.addWidget(self.lbl_full_hist_title)
+        header_layout.addStretch()
+        header_layout.addWidget(self.btn_clear_all)
+
+        self.layout_full_hist.addLayout(header_layout)
+
+        # --- СКРОЛ ЗОНА ДЛЯ КАРТОК ---
+        self.full_history_scroll = QtWidgets.QScrollArea()
+        self.full_history_scroll.setWidgetResizable(True)
+        self.full_history_scroll.setStyleSheet("""
+            QScrollArea { background: transparent; border: none; }
+            QScrollBar:vertical { width: 8px; background: transparent; }
+            QScrollBar::handle:vertical { background: rgba(139, 92, 246, 0.4); border-radius: 4px; }
+            QScrollBar::handle:vertical:hover { background: rgba(139, 92, 246, 0.7); }
+        """)
+        
+        self.full_scroll_content = QtWidgets.QWidget()
+        self.full_scroll_content.setStyleSheet("background: transparent;")
+        
+        # ОСЬ ВОНА - змінна, якої не вистачало програмі!
+        self.full_scroll_layout = QtWidgets.QVBoxLayout(self.full_scroll_content)
+        self.full_scroll_layout.setAlignment(Qt.AlignTop)
+        self.full_scroll_layout.setContentsMargins(10, 10, 10, 10)
+        self.full_scroll_layout.setSpacing(15)
+        
+        self.full_history_scroll.setWidget(self.full_scroll_content)
+        self.layout_full_hist.addWidget(self.full_history_scroll)
+
+    def add_full_history_item(self, short_title, detailed_desc, exact_time):
+        """ Створює широку картку для детальної історії """
+        card = QtWidgets.QFrame()
+        card.setMinimumHeight(80)
+        card.setStyleSheet("""
+            QFrame {
+                background-color: rgba(255, 255, 255, 0.6);
+                border-radius: 15px;
+                border: 1px solid rgba(139, 92, 246, 0.2);
+            }
+            QFrame:hover {
+                background-color: rgba(255, 255, 255, 0.9);
+                border: 1px solid rgba(139, 92, 246, 0.5);
+            }
+        """)
+
+        card_layout = QtWidgets.QHBoxLayout(card)
+        card_layout.setContentsMargins(20, 15, 20, 15)
+        card_layout.setSpacing(15)
+
+        # Індикатор статусу (Зелена крапка)
+        status_dot = QLabel()
+        status_dot.setFixedSize(12, 12)
+        status_dot.setStyleSheet("background-color: #10b981; border-radius: 6px; border: none;")
+        card_layout.addWidget(status_dot, alignment=Qt.AlignTop | Qt.AlignLeft)
+
+        # Ліва частина (Тексти)
+        text_layout = QtWidgets.QVBoxLayout()
+        text_layout.setSpacing(5)
+
+        lbl_title = QLabel(short_title)
+        lbl_title.setStyleSheet("color: #1f2937; font-size: 16px; font-weight: bold; background: transparent; border: none;")
+        
+        lbl_desc = QLabel(detailed_desc)
+        lbl_desc.setWordWrap(True)
+        lbl_desc.setStyleSheet("color: #6b7280; font-size: 14px; background: transparent; border: none;")
+
+        text_layout.addWidget(lbl_title)
+        text_layout.addWidget(lbl_desc)
+
+        # Права частина (Час)
+        lbl_time = QLabel(exact_time)
+        lbl_time.setAlignment(Qt.AlignRight | Qt.AlignTop)
+        lbl_time.setStyleSheet("color: #8b5cf6; font-size: 14px; font-weight: bold; background: transparent; border: none;")
+
+        card_layout.addLayout(text_layout, stretch=1)
+        card_layout.addWidget(lbl_time)
+
+        # Додаємо у головний лейаут
+        self.full_scroll_layout.addWidget(card)
 
     def close_history(self):
         """ Закриття повноекранної історії з анімацією """
@@ -1345,7 +1455,7 @@ class UI_MainWindow(QMainWindow):
 
         # Текст запиту
         lbl_text = QLabel(text)
-        lbl_text.setWordWrap(True)
+        lbl_text.setWordWrap(False)
         lbl_text.setStyleSheet("color: #1f2937; font-size: 15px; font-weight: 500; border: none; background: transparent;")
 
         # Час
@@ -1366,6 +1476,9 @@ class UI_MainWindow(QMainWindow):
         self.history_main_container.show()
         self.history_main_container.raise_()
 
+        # ПЕРЕД АНІМАЦІЄЮ - ЗАВАНТАЖУЄМО ДАНІ!
+        self.populate_full_history()
+
         self.anim_opacity_hist = QPropertyAnimation(self.fade_effect_hist, b"opacity")
         self.anim_opacity_hist.setDuration(500)
         self.anim_opacity_hist.setStartValue(0.0)
@@ -1381,7 +1494,131 @@ class UI_MainWindow(QMainWindow):
         self.anim_opacity_hist.start()
         self.anim_pos_hist.start()
 
+    def populate_full_history(self):
+        while self.full_scroll_layout.count() > 0:
+            item = self.full_scroll_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
+        history_file = "pyqt5_ui/history_ui.json"
+        if not os.path.exists(history_file):
+            return
+
+        with open(history_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        history = data.get("history", [])
+
+        if not history:
+            empty_lbl = QLabel("Ваша історія запитів поки що порожня")
+            empty_lbl.setAlignment(Qt.AlignCenter)
+            empty_lbl.setStyleSheet("color: #6b7280; font-size: 18px; font-weight: 500; margin-top: 100px; border: none;")
+            self.full_scroll_layout.addWidget(empty_lbl)
+            return
+        
+        # Щоб свіжіші були зверху, можемо перевернути список
+        for event in reversed(history):
+            ts = event[0]
+            short_text = event[1]
+            
+            # Заглушка для детального опису (поки ти не почнеш зберігати його у файл)
+            detailed_desc = event[2]
+            
+            # Форматуємо точний час: "22 лютого 2026, 14:30:15"
+            exact_time = arrow.get(ts).to('Europe/Kyiv').format('DD MMMM YYYY, HH:mm:ss', locale='uk')
+
+            self.add_full_history_item(short_text, detailed_desc, exact_time)
+        
+        # Пружина знизу, щоб картки не розтягувалися на весь екран, якщо їх мало
+        self.full_scroll_layout.addStretch()
+
+    def clear_history_data(self):
+        """ Повне видалення історії з красивим підтвердженням """
+        dialog = ModernConfirmDialog(self)
+        
+        # Центруємо діалог відносно головного вікна
+        if dialog.exec_() == QtWidgets.QDialog.Accepted:
+            history_file = "pyqt5_ui/history_ui.json"
+            
+            # Очищаємо файл
+            try:
+                with open(history_file, 'w', encoding='utf-8') as f:
+                    json.dump({"history": []}, f, ensure_ascii=False, indent=4)
+            except Exception as e:
+                print(f"Помилка: {e}")
+
+            # Оновлюємо інтерфейс
+            self.update_history() 
+            if hasattr(self, 'full_scroll_layout'):
+                self.populate_full_history()
+
+
+class ModernConfirmDialog(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        
+        # Головний контейнер з твоїм стилем
+        self.layout = QtWidgets.QVBoxLayout(self)
+        self.container = QtWidgets.QFrame()
+        self.container.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 2px solid #8b5cf6;
+                border-radius: 20px;
+            }
+        """)
+        
+        self.cont_layout = QtWidgets.QVBoxLayout(self.container)
+        self.cont_layout.setContentsMargins(30, 30, 30, 30)
+        self.cont_layout.setSpacing(20)
+
+        # Текст питання
+        self.label = QLabel("Очистити всю історію?")
+        self.label.setStyleSheet("font-size: 18px; font-weight: bold; color: #1f2937; border: none;")
+        self.label.setAlignment(Qt.AlignCenter)
+
+        self.sub_label = QLabel("Цю дію неможливо буде скасувати.")
+        self.sub_label.setStyleSheet("font-size: 14px; color: #6b7280; border: none;")
+        self.sub_label.setAlignment(Qt.AlignCenter)
+
+        # Кнопки
+        self.btn_layout = QtWidgets.QHBoxLayout()
+
+        self.btn_no = QtWidgets.QPushButton("Скасувати")
+        self.btn_no.setCursor(Qt.PointingHandCursor)
+        self.btn_no.setMinimumHeight(40)
+        self.btn_no.setStyleSheet("""
+            QPushButton {
+                background-color: #f3f4f6; color: #374151; border-radius: 12px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: #e5e7eb; }
+        """)
+        
+        self.btn_yes = QtWidgets.QPushButton("Так, видалити")
+        self.btn_yes.setCursor(Qt.PointingHandCursor)
+        self.btn_yes.setMinimumHeight(40)
+        self.btn_yes.setStyleSheet("""
+            QPushButton {
+                background-color: #ef4444; color: white; border-radius: 12px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: #dc2626; }
+        """)
+        
+
+
+        self.btn_yes.clicked.connect(self.accept)
+        self.btn_no.clicked.connect(self.reject)
+
+        self.btn_layout.addWidget(self.btn_no)
+        self.btn_layout.addWidget(self.btn_yes)
+
+        self.cont_layout.addWidget(self.label)
+        self.cont_layout.addWidget(self.sub_label)
+        self.cont_layout.addLayout(self.btn_layout)
+        
+        self.layout.addWidget(self.container)
 
 
         

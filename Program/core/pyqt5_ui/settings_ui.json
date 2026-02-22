@@ -7,6 +7,6 @@
         "assis_activate": "KEYS"
     },
     "voice": {
-        "voice_support": false
+        "voice_support": true
     }
 }
