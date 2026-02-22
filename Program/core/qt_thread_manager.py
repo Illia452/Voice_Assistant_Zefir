@@ -10,6 +10,7 @@ import sys
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QThread
 import asyncio
+from communications import comm
 
 
 
@@ -18,14 +19,21 @@ class Wakeword_Pipeline_Worker(QObject):
     def __init__(self):
         super().__init__()
 
+        comm.start_program.connect(self.start)
+
     def run(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        pass
         
-        self.speech_recognition = Speech_Recognition(loop=loop)
-        
-        loop.run_until_complete(self.speech_recognition.print_text())
-        self.finished.emit()
+
+
+    @pyqtSlot()
+    def start(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
+        self.speech_recognition = Speech_Recognition(loop=self.loop)
+        self.loop.run_until_complete(self.speech_recognition.print_text())
+
 
 
 

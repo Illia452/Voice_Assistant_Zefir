@@ -784,6 +784,9 @@ class UI_MainWindow(QMainWindow):
             self.status_buttonStartStop = True
 
     def switchON_ButtonStartStop(self):
+        comm.start_program.emit()
+        self.button_startStop.clicked.disconnect(self.clickButton_StartStop)
+        QTimer.singleShot(2000, lambda: self.button_startStop.clicked.connect(self.clickButton_StartStop))
         self.textStatus.setText("Активний")
         self.button_startStop.setStyleSheet("""
         QPushButton {
@@ -801,6 +804,9 @@ class UI_MainWindow(QMainWindow):
         self.button_startStop.setIconSize(QtCore.QSize(20, 20))
 
     def switchOFF_ButtonStartStop(self):
+        comm.stop_program.emit()
+        self.button_startStop.clicked.disconnect(self.clickButton_StartStop)
+        QTimer.singleShot(2000, lambda: self.button_startStop.clicked.connect(self.clickButton_StartStop))
         self.textStatus.setText("Не активний")
         self.button_startStop.setStyleSheet("""
         QPushButton {
@@ -879,6 +885,7 @@ class UI_MainWindow(QMainWindow):
 
 
     def switchON_ButtonMicrophone(self):
+            comm.micro_on.emit()
             self.button_microphone.setStyleSheet("""
 			QPushButton {
 				background-color: #c084fc;
@@ -897,6 +904,7 @@ class UI_MainWindow(QMainWindow):
 
 
     def switchOFF_ButtonMicrophone(self):
+        comm.micro_off.emit()
         self.button_microphone.setStyleSheet("""
         QPushButton {
             background-color: rgba(230, 160, 160, 0.9);

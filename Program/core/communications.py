@@ -23,5 +23,9 @@ class Communications(QObject):
     wake_up_feedback = pyqtSignal()
     activate_assistant = pyqtSignal()
     update_history = pyqtSignal()
+    start_program = pyqtSignal()
+    stop_program = pyqtSignal()
+    micro_on = pyqtSignal()
+    micro_off = pyqtSignal()
 
 comm = Communications()

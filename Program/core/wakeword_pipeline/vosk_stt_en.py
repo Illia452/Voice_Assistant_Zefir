@@ -6,10 +6,15 @@ from pydub import AudioSegment
 import json
 from wakeword_pipeline.wakeword_logic import WakeWordChecker, SilenceSearcher
 import asyncio
-from PyQt5.QtCore import QObject
+from PyQt5.QtCore import QObject, pyqtSlot, Qt
+from communications import comm
 
 class Speech_Recognition(QObject):
     def __init__(self, loop=None):
+        super().__init__()
+        self.assis_work = True
+        self.micro_status = False
+
         model = Model(r'..\..\models\speech_to_text\vosk-model-small-en-us-0.15')
         self.recognizer = KaldiRecognizer(model, 16000)
 
@@ -20,6 +25,10 @@ class Speech_Recognition(QObject):
 
         self.stream = cap.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=2048)
         self.stream.start_stream()
+
+        comm.stop_program.connect(self.stop, Qt.DirectConnection)
+        comm.micro_on.connect(self.micro_on, Qt.DirectConnection)
+        comm.micro_off.connect(self.micro_off, Qt.DirectConnection)
 
 
     async def delete_noise(self):
@@ -67,10 +76,28 @@ class Speech_Recognition(QObject):
 
     async def print_text(self):
         while True:
-            await self.delete_noise()
-            await self.volume_up()
-            await self.speech_to_text()
-            
+            if self.assis_work and self.micro_status:
+                await self.delete_noise()
+                await self.volume_up()
+                await self.speech_to_text()
+            elif not self.assis_work:
+                break
+            else:
+                await asyncio.sleep(0.1)
+
+
+    @pyqtSlot()
+    def stop(self):
+        self.assis_work = False
+        print("STOP")
+
+    @pyqtSlot()
+    def micro_on(self):
+        self.micro_status = True
+
+    @pyqtSlot()
+    def micro_off(self):
+        self.micro_status = False
 
 if __name__ == "__main__":
     speech_recognition = Speech_Recognition()
